@@ -1,0 +1,349 @@
+package com.twinndroid.ui
+
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings as AndroidSettings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Android
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.twinndroid.R
+import com.twinndroid.install.ShizukuInstaller
+import com.twinndroid.ui.theme.LocalTwinnExtras
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomeScreen(vm: MainViewModel) {
+    val context = LocalContext.current
+    var showSourceSheet by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf<CloneItem?>(null) }
+    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) vm.newFromFile(uri)
+    }
+    val canInstall = context.packageManager.canRequestPackageInstalls() ||
+        (vm.settings.useShizuku && ShizukuInstaller.hasPermission())
+
+    Scaffold(
+        contentWindowInsets = WindowInsets(0),
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { showSourceSheet = true },
+                icon = { Icon(Icons.Rounded.Add, null) },
+                text = { Text("New clone") },
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.navigationBarsPadding(),
+            )
+        },
+    ) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Header(
+                    vm.clones.size,
+                    vm.clones.count { it.updateAvailable },
+                    onAppearance = { vm.screen = Screen.Appearance },
+                    onSettings = { vm.screen = Screen.Settings },
+                )
+            }
+
+            if (!canInstall) item {
+                WarningCard(
+                    "TwinnDroid needs permission to install apps",
+                    "Allow it once, or set up Shizuku in Settings for prompt-free installs.",
+                    "Allow",
+                ) {
+                    context.startActivity(
+                        Intent(AndroidSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
+                    )
+                }
+            }
+
+            if (vm.clones.isEmpty()) item { EmptyState() }
+
+            items(vm.clones, key = { it.config.id }) { item ->
+                CloneCard(
+                    item = item,
+                    onOpen = { vm.launchIntent(item.config.clonePackage)?.let(context::startActivity) },
+                    onBuild = { vm.rebuild(item.config) },
+                    onEdit = { vm.edit(item.config) },
+                    onUninstall = {
+                        context.startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${item.config.clonePackage}")))
+                    },
+                    onDelete = { confirmDelete = item },
+                )
+            }
+        }
+    }
+
+    if (showSourceSheet) {
+        ModalBottomSheet(onDismissRequest = { showSourceSheet = false }) {
+            Column(Modifier.padding(bottom = 32.dp)) {
+                Text("Clone from…", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
+                ListItem(
+                    headlineContent = { Text("An installed app") },
+                    supportingContent = { Text("Includes split APKs. Can follow the original's updates.") },
+                    leadingContent = { Icon(Icons.Rounded.Android, null, tint = MaterialTheme.colorScheme.secondary) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier.clickable {
+                        showSourceSheet = false
+                        vm.loadApps()
+                        vm.screen = Screen.PickApp
+                    },
+                )
+                ListItem(
+                    headlineContent = { Text("An APK file") },
+                    supportingContent = { Text(".apk, .apks, .xapk or .apkm (unencrypted)") },
+                    leadingContent = { Icon(Icons.Rounded.FolderOpen, null, tint = MaterialTheme.colorScheme.primary) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier.clickable {
+                        showSourceSheet = false
+                        pickFile.launch(arrayOf("*/*"))
+                    },
+                )
+            }
+        }
+    }
+
+    confirmDelete?.let { item ->
+        AlertDialog(
+            onDismissRequest = { confirmDelete = null },
+            title = { Text("Remove ${item.config.label}?") },
+            text = {
+                Text(
+                    if (item.installedVersion != null) "This removes it from TwinnDroid only. The installed clone stays on your device — uninstall it separately if you want it gone."
+                    else "This removes the clone settings from TwinnDroid.",
+                )
+            },
+            confirmButton = { TextButton(onClick = { vm.delete(item.config); confirmDelete = null }) { Text("Remove") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+private fun Header(count: Int, updates: Int, onAppearance: () -> Unit, onSettings: () -> Unit) {
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
+            .background(LocalTwinnExtras.current.headerBrush)
+            .statusBarsPadding()
+            .padding(start = 24.dp, end = 12.dp, top = 12.dp, bottom = 28.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                painterResource(R.drawable.ic_launcher_foreground),
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text("TwinnDroid", style = MaterialTheme.typography.headlineMedium, color = Color.White)
+                Text(
+                    buildString {
+                        append(if (count == 1) "1 clone" else "$count clones")
+                        if (updates > 0) append(" · $updates update${if (updates > 1) "s" else ""}")
+                    },
+                    color = Color.White.copy(alpha = 0.8f),
+                )
+            }
+            IconButton(onClick = onAppearance) { Icon(Icons.Rounded.Palette, "Appearance", tint = Color.White) }
+            IconButton(onClick = onSettings) { Icon(Icons.Rounded.Settings, "Settings", tint = Color.White) }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState() {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.size(120.dp).clip(CircleShape).background(LocalTwinnExtras.current.headerBrush), contentAlignment = Alignment.Center) {
+            Image(painterResource(R.drawable.ic_launcher_foreground), null, Modifier.size(120.dp))
+        }
+        Spacer(Modifier.height(20.dp))
+        Text("No clones yet", style = MaterialTheme.typography.titleLarge)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Tap “New clone” to make a second copy of an app with its own login, name and icon.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+fun WarningCard(title: String, body: String, action: String, onAction: () -> Unit) {
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+    ) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Rounded.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onErrorContainer)
+                Text(body, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+            }
+            TextButton(onClick = onAction) { Text(action) }
+        }
+    }
+}
+
+@Composable
+private fun CloneCard(
+    item: CloneItem,
+    onOpen: () -> Unit,
+    onBuild: () -> Unit,
+    onEdit: () -> Unit,
+    onUninstall: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val c = item.config
+    var menu by remember { mutableStateOf(false) }
+    Card(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = RoundedCornerShape(24.dp),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (item.icon != null) {
+                    Image(item.icon, null, Modifier.size(52.dp))
+                } else {
+                    Box(Modifier.size(52.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceVariant))
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(c.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        c.clonePackage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    StatusChip(item)
+                }
+                Box {
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, "More") }
+                    DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text("Edit") }, leadingIcon = { Icon(Icons.Rounded.Edit, null) }, onClick = { menu = false; onEdit() })
+                        DropdownMenuItem(text = { Text("Rebuild & reinstall") }, leadingIcon = { Icon(Icons.Rounded.Build, null) }, onClick = { menu = false; onBuild() })
+                        if (item.installedVersion != null) {
+                            DropdownMenuItem(text = { Text("Uninstall clone") }, leadingIcon = { Icon(Icons.Rounded.Delete, null) }, onClick = { menu = false; onUninstall() })
+                        }
+                        DropdownMenuItem(text = { Text("Remove from list") }, onClick = { menu = false; onDelete() })
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                when {
+                    item.updateAvailable -> FilledTonalButton(onClick = onBuild) {
+                        Icon(Icons.Rounded.SystemUpdate, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Update")
+                    }
+                    item.installedVersion == null -> FilledTonalButton(onClick = onBuild) {
+                        Icon(Icons.Rounded.Build, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Build & install")
+                    }
+                }
+                if (item.installedVersion != null) {
+                    OutlinedButton(onClick = onOpen) {
+                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Open")
+                    }
+                }
+                OutlinedButton(onClick = onEdit) { Text("Customize") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusChip(item: CloneItem) {
+    val (text, color) = when {
+        item.updateAvailable -> "Update available" to MaterialTheme.colorScheme.tertiary
+        item.installedVersion != null -> "Installed · ${item.config.builtVersionName ?: item.installedVersion}" to MaterialTheme.colorScheme.secondary
+        else -> "Not installed" to MaterialTheme.colorScheme.outline
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.labelMedium, color = color)
+        Text(
+            "  ·  from ${item.config.sourceLabel}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}

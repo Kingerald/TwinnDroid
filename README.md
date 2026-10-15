@@ -1,0 +1,170 @@
+<div align="center">
+
+# TwinnDroid
+
+**Run two (or more) copies of the same Android app, each with its own login.**
+
+No root. No virtual space. Each copy is a real, separately installed app.
+
+</div>
+
+---
+
+## ✨ What can it do?
+
+- 👯 **Clone any app**: pick an installed app, or open an `.apk` / `.apks` / `.xapk` / `.apkm` file
+- ✏️ **Rename it**: give every copy its own name, like "Discord (Alt)"
+- 🎨 **Change its icon**: keep the original, add a coloured number badge, or use your own picture
+- 🔒 **Remove permissions**: e.g. stop a clone from using your location or contacts
+- 🔄 **Keep clones updated**: when the original app updates, TwinnDroid tells you, and one tap updates the copy *without logging you out*
+- ⚡ **Optional prompt-free installs** with [Shizuku](https://shizuku.rikka.app/)
+- 🌈 **Make TwinnDroid yours**: theme presets, your own colours (hex or colour picker), Material You, text size, and 7 app icons (or your own picture)
+
+## 📱 Requirements
+
+- Android 8.0 or newer (tested on Android 16, Samsung Galaxy S25 Ultra)
+- No root needed
+
+## 🚀 Getting started
+
+1. **Download** the latest `TwinnDroid.apk` from the [Releases](../../releases) page.
+2. **Open it** on your phone. If Android asks, allow your browser or file manager to *install unknown apps*.
+3. **Open TwinnDroid** and tap **New clone**.
+4. Choose **An installed app** (or **An APK file**) and pick the app you want to copy.
+5. Change the name, icon or permissions if you like, then tap **Clone & install**.
+6. Confirm the install prompt. Your new copy appears in the app drawer. Log in with a different account and you're done!
+
+> 💡 The first time you install a clone, Android asks you to allow TwinnDroid to install apps. Tap **Allow** on the banner in TwinnDroid, or in the prompt.
+
+## 🔄 Updating clones
+
+TwinnDroid checks every few hours whether the original app was updated. When it was:
+
+- You get a notification, and the clone shows **Update available**.
+- Tap **Update**. The clone is rebuilt from the new version and installed over the old one. **Your login and data stay.**
+
+With Shizuku and **Settings → Auto-update in background** turned on, this happens on its own.
+
+## ⚡ Shizuku (optional, still no root)
+
+Shizuku lets TwinnDroid install clones silently, without an "Install?" prompt each time.
+
+1. Install **Shizuku** from the [Play Store](https://play.google.com/store/apps/details?id=moe.shizuku.privileged.api) or [GitHub](https://github.com/RikkaApps/Shizuku/releases).
+2. Turn on **Developer options → Wireless debugging**, then follow Shizuku's pairing guide.
+3. Start Shizuku. In TwinnDroid go to **Settings → Authorize TwinnDroid**.
+
+Shizuku needs to be started again after each phone restart.
+
+## 🎨 Appearance
+
+Tap the 🎨 palette button on the home screen:
+
+| Setting | What it does |
+|---|---|
+| **Presets** | TwinnDroid, Midnight AMOLED, Ocean, Forest, Sunset, Rose, High contrast |
+| **System / Light / Dark** | Follow your phone, or force a mode |
+| **Material You** | Use colours from your wallpaper (Android 12+) |
+| **Custom colours** | Change accent, secondary, tertiary, background, cards and header gradient with a colour picker or hex code |
+| **Text size** | 85% – 140% |
+| **App icon** | 7 built-in icons, or add a home-screen shortcut with your own picture |
+
+## 🔑 Back up your signing key!
+
+TwinnDroid signs every clone with its own key. **If you uninstall TwinnDroid, that key is gone**, and you won't be able to update existing clones; you'd have to uninstall and recreate them.
+
+👉 **Settings → Signing key → Export** and keep the file somewhere safe. After reinstalling, use **Import**.
+
+## ❓ Which apps work?
+
+Most apps work fine, such as chat apps, social apps, note apps and games without strict anti-cheat. Tested: **Discord**, **Joplin**.
+
+Some apps check whether they've been modified and **won't work as clones**:
+
+- 🏦 Banking and payment apps
+- 🛡️ Apps that use Google Play Integrity (some games, some streaming apps)
+- 🔐 Apps whose *Sign in with Google* is tied to the original app
+
+Other things to know:
+
+- 🔔 **Push notifications** may not arrive in clones (they're registered to the original app).
+- 📎 Some apps may crash when **sharing files** from a clone.
+
+This is the same for every no-root cloner, including App Cloner.
+
+## 🛠️ Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| "App not installed" / conflict error | A clone with that package already exists but was signed with a different key. Uninstall the old clone, then build again. |
+| Clone stuck on the loading screen | Rebuild it (**⋮ → Rebuild & reinstall**). If it still hangs, open an issue with the app name and version. |
+| Shizuku shows "not running" | Start Shizuku again (needed after every restart), then reopen TwinnDroid. |
+| Icon change didn't show up | Give your launcher a few seconds. Re-add TwinnDroid to your home screen from the app drawer if needed. |
+
+---
+
+## 👩‍💻 For developers
+
+<details>
+<summary><b>How cloning works</b></summary>
+
+```
+source APKs (base + splits)
+  └─► ARSCLib: edit the binary AndroidManifest + resources.arsc of every APK
+        • package name → new name (manifest and resource table)
+        • relative class names (.Foo) → absolute
+        • <provider android:authorities>, custom <permission>s and their references → unique
+        • taskAffinity rewritten; sharedUserId + instrumentation removed
+        • base APK: label, icon (new drawable resource), removed permissions, debuggable
+  └─► strip old signatures / source stamp
+  └─► apksig: sign v2 + v3 (+ v1 if minSdk < 24), 16 KB page-aligned
+  └─► PackageInstaller session, or Shizuku `pm install-*` (all splits at once)
+```
+
+The clone is a normal app with a new package name, so Android gives it its own data folder, and that's what keeps logins separate. LSPatch isn't needed: it keeps the original package name, so it can't create side-by-side copies on its own.
+
+</details>
+
+<details>
+<summary><b>Building from source</b></summary>
+
+Requirements: JDK 17+, Android SDK (platform 36, build-tools 36.0.0).
+
+```bash
+./gradlew assembleDebug
+# → app/build/outputs/apk/debug/app-debug.apk
+```
+
+Test the clone engine on your PC against any APK set (outputs go to `app/build/clone-test/`):
+
+```bash
+TWINN_TEST_APKS=base.apk,split_config.arm64_v8a.apk ./gradlew :app:testDebugUnitTest
+```
+
+Project layout:
+
+| Path | What |
+|---|---|
+| `engine/` | `ManifestPatcher`, `CloneEngine` (patch + sign), `ApkSources`, `IconFactory`, `SigningKeys` |
+| `install/` | `SessionInstaller` (PackageInstaller), `ShizukuInstaller` + `ShellService` |
+| `ui/` | Compose screens, `theme/` (presets, palette → Material 3 scheme), `AppIcons` |
+| `UpdateWorker.kt` | Periodic update check / auto-update |
+
+</details>
+
+## 🤝 Contributing
+
+Bug reports and pull requests are welcome! When reporting a clone that doesn't work, please include the **app name, app version, and your Android version**.
+
+## 📄 License
+
+TwinnDroid is open source under the [MIT License](LICENSE).
+
+It's built on these open-source projects:
+
+- [ARSCLib](https://github.com/REAndroid/ARSCLib) (Apache 2.0): binary manifest and resource editing. `app/libs/arsclib-1.4.0-android.jar` is the Maven Central release with its bundled `android.*` / `org.xmlpull.*` stub classes removed.
+- [apksig](https://android.googlesource.com/platform/tools/apksig/) (Apache 2.0): APK signing
+- [Shizuku API](https://github.com/RikkaApps/Shizuku-API) (Apache 2.0)
+- [Bouncy Castle](https://www.bouncycastle.org/) (MIT)
+- Jetpack Compose, Material 3, WorkManager (Apache 2.0)
+
+> TwinnDroid is not affiliated with any of the apps you clone. Use clones in line with each app's terms of service.
