@@ -16,8 +16,8 @@ android {
         applicationId = "com.twinndroid"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.1.2"
     }
 
     // Release key: keystore.properties next to the project, in ~/.twinndroid-signing/, or TWINN_KEYSTORE_* env vars.

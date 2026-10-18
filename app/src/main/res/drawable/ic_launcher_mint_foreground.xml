@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- TwinnDroid "split droid": one head split in two, the clone half lifting away. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:pathData="M52.5,37.3L49,31M69.5,37.3L73,31" android:strokeWidth="2.6" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
-    <path android:fillColor="#FFFFFFFF" android:pathData="M44,52A17,17 0,0 1,78 52Z" />
-    <path android:fillColor="#FF00BFA5" android:pathData="M55,45.5m-1.9,0a1.9,1.9 0,1 1,3.8 0a1.9,1.9 0,1 1,-3.8 0M67,45.5m-1.9,0a1.9,1.9 0,1 1,3.8 0a1.9,1.9 0,1 1,-3.8 0" />
-    <path android:pathData="M38.5,51.3L35,45M55.5,51.3L59,45" android:strokeWidth="2.6" android:strokeColor="#FF1E1450" android:strokeLineCap="round" />
-    <path android:fillColor="#FF1E1450" android:pathData="M30,66A17,17 0,0 1,64 66Z" />
-    <path android:fillColor="#FF2EE6B6" android:pathData="M41,59.5m-1.9,0a1.9,1.9 0,1 1,3.8 0a1.9,1.9 0,1 1,-3.8 0M53,59.5m-1.9,0a1.9,1.9 0,1 1,3.8 0a1.9,1.9 0,1 1,-3.8 0" />
-    <path android:fillColor="#661E1450" android:pathData="M32,70.5h44a1.75,1.75 0,0 1,0 3.5h-44a1.75,1.75 0,0 1,0 -3.5z" />
+    <path android:fillColor="#FF1E1450" android:pathData="M30,66A22,22 0,0 1,52 44L52,66Z" />
+    <path android:pathData="M41,47L37,39" android:strokeWidth="2.8" android:strokeColor="#FF1E1450" android:strokeLineCap="round" />
+    <path android:fillColor="#FF2EE6B6" android:pathData="M44,57m-2.2,0a2.2,2.2 0,1 1,4.4 0a2.2,2.2 0,1 1,-4.4 0" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M56,38A22,22 0,0 1,78 60L56,60Z" />
+    <path android:pathData="M67,41L71,33" android:strokeWidth="2.8" android:strokeColor="#FFFFFFFF" android:strokeLineCap="round" />
+    <path android:fillColor="#FF00BFA5" android:pathData="M65,51m-2.2,0a2.2,2.2 0,1 1,4.4 0a2.2,2.2 0,1 1,-4.4 0" />
+    <path android:fillColor="#661E1450" android:pathData="M31.6,72h44.8a1.6,1.6 0,0 1,0 3.2h-44.8a1.6,1.6 0,0 1,0 -3.2z" />
 </vector>

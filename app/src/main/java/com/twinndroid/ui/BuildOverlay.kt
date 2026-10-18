@@ -215,8 +215,9 @@ private fun StepRow(label: String, status: StepStatus) {
 }
 
 /**
- * The TwinnDroid mascot animation: while building, the twin peeks out from behind the original
- * with an orbiting ring; on success they split apart with a particle burst.
+ * The TwinnDroid "split droid" mark, animated. While cloning, the head splits and rejoins as
+ * data hops from the original half to the clone half. On success the clone lifts away and both
+ * halves grow back into two whole droids. On failure the halves snap back together.
  */
 @Composable
 private fun TwinAnimation(running: Boolean, success: Boolean, failed: Boolean, modifier: Modifier) {
@@ -228,49 +229,103 @@ private fun TwinAnimation(running: Boolean, success: Boolean, failed: Boolean, m
     val error = MaterialTheme.colorScheme.error
 
     val loop = rememberInfiniteTransition(label = "twin")
-    val bob by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(1400, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "bob")
+    val bob by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse), label = "bob")
     val spin by loop.animateFloat(0f, 360f, infiniteRepeatable(tween(1600, easing = LinearEasing)), label = "spin")
-    val split by animateFloatAsState(if (success) 1f else 0f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow), label = "split")
+    val flow by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(1300, easing = LinearEasing)), label = "flow")
+    val split by animateFloatAsState(
+        when {
+            success -> 1f
+            failed -> 0f
+            running -> 0.35f + 0.65f * bob
+            else -> 1f
+        },
+        spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "split",
+    )
+    val complete by animateFloatAsState(if (success) 1f else 0f, tween(700, delayMillis = 250, easing = FastOutSlowInEasing), label = "complete")
     val burst = remember { Animatable(0f) }
-    LaunchedEffect(success) { if (success) burst.animateTo(1f, tween(900, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(success) { if (success) burst.animateTo(1f, tween(900, delayMillis = 300, easing = FastOutSlowInEasing)) }
 
     Canvas(modifier) {
-        val r = size.minDimension * 0.22f
+        val r = size.minDimension * 0.2f
         val cx = size.width / 2
-        val cy = size.height * 0.58f
-        val peek = if (running) bob * r * 0.35f else 0f
-        val sep = split * r * 1.15f
+        val cy = size.height * 0.6f
+        // Split: halves part sideways and the clone half lifts; once complete they level out.
+        val sideways = r * 0.1f + r * 1.0f * split * (0.25f + 0.75f * complete)
+        val lift = r * 0.28f * split * (1f - complete)
+        val left = Offset(cx - sideways, cy)
+        val right = Offset(cx + sideways, cy - lift)
+        val leftColor = if (failed) error else front
+        val rightColor = if (failed) error else back
 
-        // Orbit ring while working.
         if (running) {
-            drawArc(accent, spin, 110f, false, Offset(cx - r * 2f, cy - r * 2f - r * 0.3f), Size(r * 4f, r * 4f), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
-            drawArc(back, spin + 180f, 70f, false, Offset(cx - r * 2f, cy - r * 2f - r * 0.3f), Size(r * 4f, r * 4f), style = Stroke(3.dp.toPx(), cap = StrokeCap.Round), alpha = 0.7f)
+            val box = Size(r * 4.4f, r * 4.4f)
+            val tl = Offset(cx - box.width / 2, cy - r * 0.45f - box.height / 2)
+            drawArc(accent, spin, 110f, false, tl, box, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round))
+            drawArc(back, spin + 180f, 70f, false, tl, box, style = Stroke(3.dp.toPx(), cap = StrokeCap.Round), alpha = 0.7f)
+            // Data hopping from the original to the clone along an arc.
+            val from = left + Offset(-r * 0.2f, -r * 0.45f)
+            val to = right + Offset(r * 0.2f, -r * 0.45f)
+            val ctrl = Offset((from.x + to.x) / 2, minOf(from.y, to.y) - r * 1.1f)
+            for (k in 0 until 5) {
+                val f = (flow + k / 5f) % 1f
+                val a = 1 - f
+                val pos = Offset(a * a * from.x + 2 * a * f * ctrl.x + f * f * to.x, a * a * from.y + 2 * a * f * ctrl.y + f * f * to.y)
+                drawCircle(accent, r * 0.075f, pos, alpha = sin(f * PI.toFloat()))
+            }
         }
-        // Success burst.
         if (burst.value > 0f && burst.value < 1f) {
             val colors = arrayOf(accent, back, tertiary)
             for (i in 0 until 18) {
                 val a = (i / 18f) * 2f * PI.toFloat()
-                val d = r * (1.2f + burst.value * 1.8f)
-                drawCircle(colors[i % 3], 4.dp.toPx() * (1f - burst.value), Offset(cx + cos(a) * d, cy - r * 0.4f + sin(a) * d), alpha = 1f - burst.value)
+                val d = r * (1.4f + burst.value * 1.8f)
+                drawCircle(colors[i % 3], 4.dp.toPx() * (1f - burst.value), Offset(cx + cos(a) * d, cy - r * 0.5f + sin(a) * d), alpha = 1f - burst.value)
             }
         }
-        drawDroid(Offset(cx + r * 0.45f + sep, cy - r * 0.55f - peek), r, back, eye)
-        drawDroid(Offset(cx - r * 0.45f - sep, cy), r, if (failed) error else front, accent)
+
+        // Left droid: the original's left half, growing its right half back on success.
+        drawSplitDroid(left, r, leftColor, eye, startAngle = 180f, sweep = 90f + 90f * complete, leftSide = true, complete = complete)
+        // Right droid: the clone's right half, growing its left half back on success.
+        drawSplitDroid(right, r, rightColor, eye, startAngle = 270f - 90f * complete, sweep = 90f + 90f * complete, leftSide = false, complete = complete)
+
+        // Base line: one shared line while joined, splitting into two under the finished droids.
+        val baseY = cy + r * 0.3f
+        val stroke = r * 0.14f
+        drawLine(front, Offset(left.x - r, baseY), Offset(right.x + r, baseY), stroke, StrokeCap.Round, alpha = 0.45f * (1f - complete))
+        if (complete > 0f) {
+            drawLine(leftColor, Offset(left.x - r, baseY), Offset(left.x + r, baseY), stroke, StrokeCap.Round, alpha = 0.45f * complete)
+            drawLine(rightColor, Offset(right.x - r, baseY), Offset(right.x + r, baseY), stroke, StrokeCap.Round, alpha = 0.45f * complete)
+        }
     }
 }
 
-private fun DrawScope.drawDroid(c: Offset, r: Float, color: Color, eye: Color) {
+/** One droid head drawn as a wedge of a half-disc, with the antenna and eye of each visible side. */
+private fun DrawScope.drawSplitDroid(
+    c: Offset,
+    r: Float,
+    color: Color,
+    eye: Color,
+    startAngle: Float,
+    sweep: Float,
+    leftSide: Boolean,
+    complete: Float,
+) {
+    drawArc(color, startAngle, sweep, useCenter = true, topLeft = Offset(c.x - r, c.y - r), size = Size(r * 2, r * 2))
     val stroke = r * 0.13f
-    val a1 = Offset(c.x - r * 0.5f, c.y - r * 0.86f)
-    val a2 = Offset(c.x + r * 0.5f, c.y - r * 0.86f)
-    drawLine(color, a1, Offset(a1.x - r * 0.22f, a1.y - r * 0.38f), stroke, StrokeCap.Round)
-    drawLine(color, a2, Offset(a2.x + r * 0.22f, a2.y - r * 0.38f), stroke, StrokeCap.Round)
-    val dome = Path().apply {
-        arcTo(androidx.compose.ui.geometry.Rect(c.x - r, c.y - r, c.x + r, c.y + r), 180f, 180f, false)
-        close()
+    val ownAlpha = 1f
+    val otherAlpha = complete
+    fun antenna(side: Float, alpha: Float) {
+        if (alpha <= 0f) return
+        val base = Offset(c.x + side * r * 0.5f, c.y - r * 0.86f)
+        drawLine(color, base, Offset(base.x + side * r * 0.22f, base.y - r * 0.38f), stroke, StrokeCap.Round, alpha = alpha)
     }
-    drawPath(dome, color)
-    drawCircle(eye, r * 0.11f, Offset(c.x - r * 0.35f, c.y - r * 0.38f))
-    drawCircle(eye, r * 0.11f, Offset(c.x + r * 0.35f, c.y - r * 0.38f))
+    fun eyeAt(side: Float, alpha: Float) {
+        if (alpha <= 0f) return
+        drawCircle(eye, r * 0.11f, Offset(c.x + side * r * 0.36f, c.y - r * 0.4f), alpha = alpha)
+    }
+    val own = if (leftSide) -1f else 1f
+    antenna(own, ownAlpha)
+    antenna(-own, otherAlpha)
+    eyeAt(own, ownAlpha)
+    eyeAt(-own, otherAlpha)
 }

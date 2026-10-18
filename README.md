@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/logo.svg" width="128" alt="TwinnDroid logo: a droid head split in two" />
+
 # TwinnDroid
 
 **Run two (or more) copies of the same Android app, each with its own login.**
