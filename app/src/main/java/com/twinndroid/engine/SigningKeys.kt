@@ -90,6 +90,11 @@ object SigningKeys {
         cached = null
     }
 
+    /** Drops the cached key so the next [get] re-reads signing.p12 (after a backup restore). */
+    fun invalidate() {
+        cached = null
+    }
+
     fun fingerprint(context: Context): String =
         MessageDigest.getInstance("SHA-256").digest(get(context).certificate.encoded)
             .joinToString(":") { "%02X".format(it) }

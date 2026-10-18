@@ -29,7 +29,15 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 @Immutable
-data class TwinnExtras(val headerBrush: Brush, val headerStart: Color, val headerEnd: Color)
+data class TwinnExtras(
+    val headerBrush: Brush,
+    val headerStart: Color,
+    val headerEnd: Color,
+    val background: BgAnimation = BgAnimation.SPACE,
+    val parallax: Boolean = true,
+    val outlines: Boolean = true,
+    val glassCards: Boolean = true,
+)
 
 val LocalTwinnExtras = staticCompositionLocalOf {
     TwinnExtras(Brush.linearGradient(listOf(Color(0xFF1E1450), Color(0xFF7C4DFF))), Color(0xFF1E1450), Color(0xFF7C4DFF))
@@ -94,8 +102,8 @@ fun TwinnTheme(config: ThemeConfig = ThemeConfig(), content: @Composable () -> U
     val systemDark = isSystemInDarkTheme()
     val palette = config.palette(systemDark)
 
-    val scheme: ColorScheme
-    val extras: TwinnExtras
+    var scheme: ColorScheme
+    var extras: TwinnExtras
     if (config.dynamicColor && Build.VERSION.SDK_INT >= 31) {
         val dark = when (config.mode) {
             ThemeMode.SYSTEM -> systemDark
@@ -111,6 +119,22 @@ fun TwinnTheme(config: ThemeConfig = ThemeConfig(), content: @Composable () -> U
         val end = Color(palette.headerEnd)
         extras = TwinnExtras(Brush.linearGradient(listOf(start, end)), start, end)
     }
+
+    if (config.pureBlack && scheme.background.luminance() < 0.5f) {
+        scheme = scheme.copy(
+            background = Color.Black,
+            surface = Color.Black,
+            surfaceContainerLowest = Color.Black,
+            surfaceContainerLow = lerp(Color.Black, scheme.surfaceContainer, 0.5f),
+            inverseOnSurface = Color.Black,
+        )
+    }
+    extras = extras.copy(
+        background = config.background,
+        parallax = config.parallax,
+        outlines = config.outlines,
+        glassCards = config.glassCards,
+    )
 
     val view = LocalView.current
     if (!view.isInEditMode) {

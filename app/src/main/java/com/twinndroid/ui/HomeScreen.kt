@@ -3,22 +3,20 @@ package com.twinndroid.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings as AndroidSettings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.VisibilityThreshold
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -29,33 +27,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Android
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -70,104 +57,64 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.twinndroid.R
 import com.twinndroid.install.ShizukuInstaller
 import com.twinndroid.ui.theme.LocalTwinnExtras
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** First tab: the user's clones. */
 @Composable
-fun HomeScreen(vm: MainViewModel) {
+fun ClonesPage(vm: MainViewModel, onNewClone: () -> Unit) {
     val context = LocalContext.current
-    var showSourceSheet by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf<CloneItem?>(null) }
-    val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) vm.newFromFile(uri)
-    }
     val canInstall = context.packageManager.canRequestPackageInstalls() ||
         (vm.settings.useShizuku && ShizukuInstaller.hasPermission())
 
-    Scaffold(
-        contentWindowInsets = WindowInsets(0),
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showSourceSheet = true },
-                icon = { Icon(Icons.Rounded.Add, null) },
-                text = { Text("New clone") },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.navigationBarsPadding(),
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        item(key = "header") {
+            Header(
+                vm.clones.size,
+                vm.clones.count { it.updateAvailable },
+                onAppearance = { vm.screen = Screen.Appearance },
+                onSettings = { vm.screen = Screen.Settings },
             )
-        },
-    ) { padding ->
-        LazyColumn(
-            Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                Header(
-                    vm.clones.size,
-                    vm.clones.count { it.updateAvailable },
-                    onAppearance = { vm.screen = Screen.Appearance },
-                    onSettings = { vm.screen = Screen.Settings },
-                )
-            }
+        }
 
-            if (!canInstall) item {
-                WarningCard(
-                    "TwinnDroid needs permission to install apps",
-                    "Allow it once, or set up Shizuku in Settings for prompt-free installs.",
-                    "Allow",
-                ) {
-                    context.startActivity(
-                        Intent(AndroidSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
-                    )
-                }
-            }
-
-            if (vm.clones.isEmpty()) item { EmptyState() }
-
-            items(vm.clones, key = { it.config.id }) { item ->
-                CloneCard(
-                    item = item,
-                    onOpen = { vm.launchIntent(item.config.clonePackage)?.let(context::startActivity) },
-                    onBuild = { vm.rebuild(item.config) },
-                    onEdit = { vm.edit(item.config) },
-                    onUninstall = {
-                        context.startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${item.config.clonePackage}")))
-                    },
-                    onDelete = { confirmDelete = item },
+        if (!canInstall) item(key = "warn") {
+            WarningCard(
+                "TwinnDroid needs permission to install apps",
+                "Allow it once, or set up Shizuku in Settings for prompt-free installs.",
+                "Allow",
+                Modifier.animateItem(),
+            ) {
+                context.startActivity(
+                    Intent(AndroidSettings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:${context.packageName}")),
                 )
             }
         }
-    }
 
-    if (showSourceSheet) {
-        ModalBottomSheet(onDismissRequest = { showSourceSheet = false }) {
-            Column(Modifier.padding(bottom = 32.dp)) {
-                Text("Clone from…", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp))
-                ListItem(
-                    headlineContent = { Text("An installed app") },
-                    supportingContent = { Text("Includes split APKs. Can follow the original's updates.") },
-                    leadingContent = { Icon(Icons.Rounded.Android, null, tint = MaterialTheme.colorScheme.secondary) },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable {
-                        showSourceSheet = false
-                        vm.loadApps()
-                        vm.screen = Screen.PickApp
-                    },
-                )
-                ListItem(
-                    headlineContent = { Text("An APK file") },
-                    supportingContent = { Text(".apk, .apks, .xapk or .apkm (unencrypted)") },
-                    leadingContent = { Icon(Icons.Rounded.FolderOpen, null, tint = MaterialTheme.colorScheme.primary) },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable {
-                        showSourceSheet = false
-                        pickFile.launch(arrayOf("*/*"))
-                    },
-                )
-            }
+        if (vm.clones.isEmpty()) item(key = "empty") { EmptyState(onNewClone) }
+
+        items(vm.clones, key = { it.config.id }) { item ->
+            CloneCard(
+                item = item,
+                modifier = Modifier.animateItem(
+                    fadeInSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    placementSpec = spring(stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset.VisibilityThreshold),
+                ),
+                onOpen = { vm.launchIntent(item.config.clonePackage)?.let(context::startActivity) },
+                onBuild = { vm.rebuild(item.config) },
+                onEdit = { vm.edit(item.config) },
+                onUninstall = {
+                    context.startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${item.config.clonePackage}")))
+                },
+                onDelete = { confirmDelete = item },
+            )
         }
     }
 
@@ -177,7 +124,7 @@ fun HomeScreen(vm: MainViewModel) {
             title = { Text("Remove ${item.config.label}?") },
             text = {
                 Text(
-                    if (item.installedVersion != null) "This removes it from TwinnDroid only. The installed clone stays on your device — uninstall it separately if you want it gone."
+                    if (item.installedVersion != null) "This removes it from TwinnDroid only. The installed clone stays on your device; uninstall it separately if you want it gone."
                     else "This removes the clone settings from TwinnDroid.",
                 )
             },
@@ -198,11 +145,7 @@ private fun Header(count: Int, updates: Int, onAppearance: () -> Unit, onSetting
             .padding(start = 24.dp, end = 12.dp, top = 12.dp, bottom = 28.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painterResource(R.drawable.ic_launcher_foreground),
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-            )
+            Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(64.dp))
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text("TwinnDroid", style = MaterialTheme.typography.headlineMedium, color = Color.White)
@@ -221,7 +164,7 @@ private fun Header(count: Int, updates: Int, onAppearance: () -> Unit, onSetting
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(onNewClone: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -233,18 +176,20 @@ private fun EmptyState() {
         Text("No clones yet", style = MaterialTheme.typography.titleLarge)
         Spacer(Modifier.height(6.dp))
         Text(
-            "Tap “New clone” to make a second copy of an app with its own login, name and icon.",
+            "Make a second copy of an app with its own login, name and icon.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Spacer(Modifier.height(16.dp))
+        FilledTonalButton(onClick = onNewClone) { Text("Make your first clone") }
     }
 }
 
 @Composable
-fun WarningCard(title: String, body: String, action: String, onAction: () -> Unit) {
-    Card(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+fun WarningCard(title: String, body: String, action: String, modifier: Modifier = Modifier, onAction: () -> Unit) {
+    TwinnCard(
+        modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        container = MaterialTheme.colorScheme.errorContainer,
     ) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.Warning, null, tint = MaterialTheme.colorScheme.onErrorContainer)
@@ -261,6 +206,7 @@ fun WarningCard(title: String, body: String, action: String, onAction: () -> Uni
 @Composable
 private fun CloneCard(
     item: CloneItem,
+    modifier: Modifier,
     onOpen: () -> Unit,
     onBuild: () -> Unit,
     onEdit: () -> Unit,
@@ -269,11 +215,7 @@ private fun CloneCard(
 ) {
     val c = item.config
     var menu by remember { mutableStateOf(false) }
-    Card(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = RoundedCornerShape(24.dp),
-    ) {
+    TwinnCard(modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
         Column(Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (item.icon != null) {

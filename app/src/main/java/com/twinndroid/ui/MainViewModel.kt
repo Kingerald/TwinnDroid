@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.ImageBitmap
@@ -19,7 +20,9 @@ import com.twinndroid.data.CloneRepository
 import com.twinndroid.data.IconMode
 import com.twinndroid.data.Settings
 import com.twinndroid.data.SourceKind
+import com.twinndroid.engine.ApkExporter
 import com.twinndroid.engine.ApkSources
+import com.twinndroid.engine.ExportFormat
 import com.twinndroid.engine.IconFactory
 import com.twinndroid.engine.SourceApks
 import com.twinndroid.install.InstallResult
@@ -29,7 +32,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 
-enum class Screen { Home, PickApp, Editor, Settings, Appearance }
+enum class Screen { Home, Editor, Settings, Appearance }
 
 data class AppEntry(val packageName: String, val label: String, val icon: ImageBitmap?, val isSystem: Boolean)
 
@@ -52,9 +55,24 @@ data class EditorState(
 
 data class BuildState(
     val clonePackage: String,
+    val label: String,
+    val icon: ImageBitmap?,
     val running: Boolean,
     val logs: List<String>,
+    /** 0 read source, 1 patch, 2 sign, 3 install, 4 finished. */
+    val stage: Int = 0,
     val result: InstallResult? = null,
+)
+
+data class ExportState(
+    val source: SourceApks,
+    val iconBitmap: ImageBitmap?,
+    val splits: List<Pair<String, Long>>,
+    val format: ExportFormat,
+    val running: Boolean = false,
+    val progress: Float = 0f,
+    val done: Uri? = null,
+    val error: String? = null,
 )
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
@@ -71,6 +89,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var build by mutableStateOf<BuildState?>(null)
         private set
+    var export by mutableStateOf<ExportState?>(null)
+        private set
+    /** Selected bottom tab; kept here so it survives visiting Settings/Editor. */
+    var tab by mutableIntStateOf(0)
     var message by mutableStateOf<String?>(null)
     var busy by mutableStateOf(false)
         private set
@@ -180,7 +202,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val e = editor ?: return
         val c = transform(e.config)
         val iconChanged = c.iconMode != e.config.iconMode || c.badgeColor != e.config.badgeColor ||
-            c.badgeText != e.config.badgeText || c.customIconPath != e.config.customIconPath
+            c.badgeText != e.config.badgeText || c.customIconPath != e.config.customIconPath ||
+            c.iconAdjust != e.config.iconAdjust
         editor = e.copy(
             config = c,
             preview = if (iconChanged) preview(c, e.sourceIcon) else e.preview,
@@ -223,7 +246,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         repo.upsert(c)
+        lastPreview = c.id to e.preview
         editor = null
+        tab = 0
         screen = Screen.Home
         runBuild(c)
     }
@@ -232,12 +257,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun runBuild(config: CloneConfig) {
         if (build?.running == true) return
-        build = BuildState(config.clonePackage, running = true, logs = listOf("Building ${config.label}…"))
+        val icon = (editorPreviewFor(config) ?: clones.firstOrNull { it.config.id == config.id }?.icon)
+        build = BuildState(config.clonePackage, config.label, icon, running = true, logs = listOf("Building ${config.label}…"))
         viewModelScope.launch {
             val result = try {
                 CloneOperations.buildAndInstall(ctx, config) { line ->
                     viewModelScope.launch(Dispatchers.Main) {
-                        build?.let { build = it.copy(logs = it.logs + line) }
+                        build?.let {
+                            val stage = when {
+                                line.startsWith("Patching") -> 1
+                                line.startsWith("Signing") -> 2
+                                line.startsWith("Installing") || line.startsWith("Waiting") -> 3
+                                else -> it.stage
+                            }
+                            build = it.copy(logs = it.logs + line, stage = maxOf(stage, it.stage))
+                        }
                     }
                 }
             } catch (t: Throwable) {
@@ -245,10 +279,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     build?.let { b -> build = b.copy(logs = b.logs + "✗ ${it.message}") }
                 }
             }
-            build?.let { build = it.copy(running = false, result = result) }
+            build?.let { build = it.copy(running = false, result = result, stage = if (result.success) 4 else it.stage) }
             refreshClones()
         }
     }
+
+    private var lastPreview: Pair<String, ImageBitmap?>? = null
+    private fun editorPreviewFor(config: CloneConfig): ImageBitmap? = lastPreview?.takeIf { it.first == config.id }?.second
 
     fun dismissBuild() {
         build = null
@@ -261,6 +298,56 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun launchIntent(packageName: String): Intent? = ctx.packageManager.getLaunchIntentForPackage(packageName)
+
+    // ---- extract ------------------------------------------------------------------------------
+
+    fun openExport(packageName: String) = launchBusy {
+        val (source, splits) = withContext(Dispatchers.IO) {
+            val src = ApkSources.installed(ctx, packageName)
+            src to src.files.map { f -> (ApkSources.splitName(f) ?: "base") to f.length() }
+        }
+        export = ExportState(
+            source = source,
+            iconBitmap = source.icon?.toBitmap(128, 128)?.asImageBitmap(),
+            splits = splits,
+            format = if (source.files.size == 1) ExportFormat.APK else ExportFormat.APKS,
+        )
+    }
+
+    fun setExportFormat(format: ExportFormat) {
+        export?.let { if (!it.running) export = it.copy(format = format, done = null, error = null) }
+    }
+
+    private var exportJob: kotlinx.coroutines.Job? = null
+
+    fun runExport(target: Uri) {
+        val state = export ?: return
+        export = state.copy(running = true, progress = 0f, done = null, error = null)
+        exportJob = viewModelScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    ctx.contentResolver.openOutputStream(target, "w")!!.use { out ->
+                        var last = -1f
+                        ApkExporter.export(ctx, state.source, state.format, out) { p ->
+                            if (p - last < 0.01f && p < 1f) return@export
+                            last = p
+                            viewModelScope.launch(Dispatchers.Main) { export?.let { if (it.running) export = it.copy(progress = p) } }
+                        }
+                    }
+                }
+                export = export?.copy(running = false, progress = 1f, done = target)
+            } catch (t: Throwable) {
+                runCatching { android.provider.DocumentsContract.deleteDocument(ctx.contentResolver, target) }
+                export = export?.copy(running = false, error = if (t is kotlinx.coroutines.CancellationException) "Cancelled" else (t.message ?: t.javaClass.simpleName))
+            }
+        }
+    }
+
+    fun closeExport() {
+        exportJob?.cancel()
+        exportJob = null
+        export = null
+    }
 
     private fun launchBusy(block: suspend () -> Unit) = viewModelScope.launch {
         busy = true

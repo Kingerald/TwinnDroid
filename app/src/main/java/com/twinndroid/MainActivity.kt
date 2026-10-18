@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import com.twinndroid.ui.AppIcons
 import com.twinndroid.ui.MainViewModel
 import com.twinndroid.ui.TwinnRoot
 import com.twinndroid.ui.theme.ThemeRepository
@@ -33,6 +34,11 @@ class MainActivity : ComponentActivity() {
             val config by theme.config.collectAsState()
             TwinnTheme(config) { TwinnRoot(vm) }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) AppIcons.applyPending(this)
     }
 
     override fun onResume() {

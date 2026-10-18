@@ -14,6 +14,29 @@ enum class SourceKind {
 @Serializable
 enum class IconMode { ORIGINAL, BADGE, CUSTOM }
 
+/** App Cloner-style colour adjustments applied to the clone's icon before any badge. */
+@Serializable
+data class IconAdjust(
+    /** Hue rotation in degrees, -180..180. */
+    val hue: Float = 0f,
+    /** 0 = greyscale, 1 = unchanged, 2 = double. */
+    val saturation: Float = 1f,
+    /** -1..1 */
+    val brightness: Float = 0f,
+    /** -0.5..0.5 */
+    val contrast: Float = 0f,
+    /** Colour laid over the icon's shape, or null for none. */
+    val tint: Long? = null,
+    val tintStrength: Float = 0.5f,
+    val invert: Boolean = false,
+    val flip: Boolean = false,
+    /** 0, 90, 180 or 270. */
+    val rotation: Int = 0,
+) {
+    val isIdentity: Boolean
+        get() = this == IconAdjust()
+}
+
 @Serializable
 data class CloneConfig(
     val id: String,
@@ -27,6 +50,7 @@ data class CloneConfig(
     val badgeText: String = "2",
     /** Absolute path of the user's custom icon image (only for [IconMode.CUSTOM]). */
     val customIconPath: String? = null,
+    val iconAdjust: IconAdjust = IconAdjust(),
     val removedPermissions: List<String> = emptyList(),
     val debuggable: Boolean = false,
     /** Version code of the source the currently installed clone was built from. 0 = never built. */

@@ -14,11 +14,13 @@ No root. No virtual space. Each copy is a real, separately installed app.
 
 - 👯 **Clone any app**: pick an installed app, or open an `.apk` / `.apks` / `.xapk` / `.apkm` file
 - ✏️ **Rename it**: give every copy its own name, like "Discord (Alt)"
-- 🎨 **Change its icon**: keep the original, add a coloured number badge, or use your own picture
+- 🎨 **Change its icon**: keep the original, add a coloured number badge, or use your own picture, then fine-tune hue, saturation, brightness, contrast, tint, invert, flip and rotation with a live preview
 - 🔒 **Remove permissions**: e.g. stop a clone from using your location or contacts
 - 🔄 **Keep clones updated**: when the original app updates, TwinnDroid tells you, and one tap updates the copy *without logging you out*
+- 📦 **Extract APKs**: save any installed app, splits included, as `.apk`, `.apks`, `.xapk`, `.apkm`, or one merged `.apk`
 - ⚡ **Optional prompt-free installs** with [Shizuku](https://shizuku.rikka.app/)
-- 🌈 **Make TwinnDroid yours**: theme presets, your own colours (hex or colour picker), Material You, text size, and 7 app icons (or your own picture)
+- 🌈 **Make TwinnDroid yours**: animated backgrounds, theme presets, your own colours (hex or colour picker), Material You, glass cards, text size, and 7 app icons (or your own picture)
+- 💾 **Backup & restore**: move your clones, signing key and settings to a new phone or a fresh install
 
 ## 📱 Requirements
 
@@ -29,8 +31,8 @@ No root. No virtual space. Each copy is a real, separately installed app.
 
 1. **Download** the latest `TwinnDroid.apk` from the [Releases](../../releases) page.
 2. **Open it** on your phone. If Android asks, allow your browser or file manager to *install unknown apps*.
-3. **Open TwinnDroid** and tap **New clone**.
-4. Choose **An installed app** (or **An APK file**) and pick the app you want to copy.
+3. **Open TwinnDroid** and go to the **New clone** tab at the bottom (or swipe left).
+4. Pick the app you want to copy, or tap **From an APK file**.
 5. Change the name, icon or permissions if you like, then tap **Clone & install**.
 6. Confirm the install prompt. Your new copy appears in the app drawer. Log in with a different account and you're done!
 
@@ -55,12 +57,30 @@ Shizuku lets TwinnDroid install clones silently, without an "Install?" prompt ea
 
 Shizuku needs to be started again after each phone restart.
 
+## 📦 Extracting APKs
+
+Open the **Extract** tab, tap any app and choose a format:
+
+| Format | Use it for |
+|---|---|
+| **APK** | Apps that are a single file |
+| **Merged** | Apps with split APKs, combined into one `.apk` that installs anywhere. It's re-signed, so it installs as a separate copy and can't update the original. |
+| **APKS** | The original split set, installable with SAI or TwinnDroid |
+| **XAPK** | APKPure-style bundle with app info and icon |
+| **APKM** | APKMirror-style bundle (unencrypted) |
+
+Every format except Merged keeps the app's original signature.
+
 ## 🎨 Appearance
 
-Tap the 🎨 palette button on the home screen:
+Tap the 🎨 palette button on the Clones tab:
 
 | Setting | What it does |
 |---|---|
+| **Background** | Space, Particles, Circles, Rings, Mesh, Shapes, Snow, Grid, Lava lamp, Aurora, None or Random. It pauses when TwinnDroid is in the background and turns off when Android's "Remove animations" is on. |
+| **Parallax** | Background drifts gently when you tilt the phone |
+| **Pure black** | True-black dark mode for OLED screens |
+| **Glass cards / Outlines** | Translucent cards and thin edges |
 | **Presets** | TwinnDroid, Midnight AMOLED, Ocean, Forest, Sunset, Rose, High contrast |
 | **System / Light / Dark** | Follow your phone, or force a mode |
 | **Material You** | Use colours from your wallpaper (Android 12+) |
@@ -68,11 +88,13 @@ Tap the 🎨 palette button on the home screen:
 | **Text size** | 85% – 140% |
 | **App icon** | 7 built-in icons, or add a home-screen shortcut with your own picture |
 
-## 🔑 Back up your signing key!
+## 💾 Back up TwinnDroid!
 
 TwinnDroid signs every clone with its own key. **If you uninstall TwinnDroid, that key is gone**, and you won't be able to update existing clones; you'd have to uninstall and recreate them.
 
-👉 **Settings → Signing key → Export** and keep the file somewhere safe. After reinstalling, use **Import**.
+👉 **Settings → Backup & restore → Back up** saves your clone list, signing key, imported APKs, icons and settings to one file. After reinstalling (or on a new phone), use **Restore**.
+
+> **Updating from 1.0.0?** 1.1.0 is signed with a new release key, so Android needs you to uninstall 1.0.0 first. Before you do, use **Settings → Signing key → Export** in 1.0.0. Then install 1.1.0 and use **Import**, so your existing clones keep updating.
 
 ## ❓ Which apps work?
 
@@ -98,7 +120,7 @@ This is the same for every no-root cloner, including App Cloner.
 | "App not installed" / conflict error | A clone with that package already exists but was signed with a different key. Uninstall the old clone, then build again. |
 | Clone stuck on the loading screen | Rebuild it (**⋮ → Rebuild & reinstall**). If it still hangs, open an issue with the app name and version. |
 | Shizuku shows "not running" | Start Shizuku again (needed after every restart), then reopen TwinnDroid. |
-| Icon change didn't show up | Give your launcher a few seconds. Re-add TwinnDroid to your home screen from the app drawer if needed. |
+| Icon change didn't show up | The new icon applies when you leave TwinnDroid. Give your launcher a few seconds, and re-add TwinnDroid to your home screen from the app drawer if needed. |
 
 ---
 
@@ -134,6 +156,21 @@ Requirements: JDK 17+, Android SDK (platform 36, build-tools 36.0.0).
 # → app/build/outputs/apk/debug/app-debug.apk
 ```
 
+Release builds (R8-minified) are signed with your own key. Put a `keystore.properties` in the project root or in `~/.twinndroid-signing/` (never commit it):
+
+```properties
+storeFile=/path/to/release.jks
+storePassword=...
+keyAlias=...
+keyPassword=...
+```
+
+or set `TWINN_KEYSTORE_FILE`, `TWINN_KEYSTORE_PASSWORD`, `TWINN_KEY_ALIAS` and `TWINN_KEY_PASSWORD`. Without a key, release builds fall back to the debug key.
+
+```bash
+./gradlew assembleRelease
+```
+
 Test the clone engine on your PC against any APK set (outputs go to `app/build/clone-test/`):
 
 ```bash
@@ -144,9 +181,10 @@ Project layout:
 
 | Path | What |
 |---|---|
-| `engine/` | `ManifestPatcher`, `CloneEngine` (patch + sign), `ApkSources`, `IconFactory`, `SigningKeys` |
+| `engine/` | `ManifestPatcher`, `CloneEngine` (patch + sign), `ApkExporter` (extract/merge), `ApkSources`, `IconFactory`, `SigningKeys` |
 | `install/` | `SessionInstaller` (PackageInstaller), `ShizukuInstaller` + `ShellService` |
-| `ui/` | Compose screens, `theme/` (presets, palette → Material 3 scheme), `AppIcons` |
+| `ui/` | Compose screens and the tab pager, `theme/` (presets, palette → Material 3 scheme, `AnimatedBackground`), `AppIcons` |
+| `data/` | Clone configs, settings, `BackupManager` |
 | `UpdateWorker.kt` | Periodic update check / auto-update |
 
 </details>

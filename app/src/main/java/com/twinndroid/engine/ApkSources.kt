@@ -19,6 +19,8 @@ class SourceApks(
     val versionName: String?,
     val icon: Drawable?,
     val requestedPermissions: List<String>,
+    val minSdk: Int = 0,
+    val targetSdk: Int = 0,
 )
 
 object ApkSources {
@@ -42,6 +44,8 @@ object ApkSources {
             versionName = info.versionName,
             icon = ai.loadIcon(pm),
             requestedPermissions = info.requestedPermissions?.toList().orEmpty(),
+            minSdk = ai.minSdkVersion,
+            targetSdk = ai.targetSdkVersion,
         )
     }
 
@@ -100,7 +104,15 @@ object ApkSources {
             versionName = info.versionName,
             icon = ai?.loadIcon(pm),
             requestedPermissions = info.requestedPermissions?.toList().orEmpty(),
+            minSdk = ai?.minSdkVersion ?: 0,
+            targetSdk = ai?.targetSdkVersion ?: 0,
         )
+    }
+
+    /** Split name from the APK's manifest ("config.arm64_v8a"), or null for the base APK. */
+    fun splitName(apk: File): String? = ZipFile(apk).use { zip ->
+        val entry = zip.getEntry("AndroidManifest.xml") ?: return null
+        zip.getInputStream(entry).use { AndroidManifestBlock.load(it).split }
     }
 
     fun isSplit(apk: File): Boolean = ZipFile(apk).use { zip ->

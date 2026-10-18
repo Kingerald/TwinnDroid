@@ -19,6 +19,12 @@ class CloneRepository private constructor(context: Context) {
         if (file.exists()) json.decodeFromString<List<CloneConfig>>(file.readText()) else emptyList()
     }.getOrDefault(emptyList())
 
+    /** Re-reads clones.json from disk (after a backup restore). */
+    @Synchronized
+    fun reload() {
+        _clones.value = load()
+    }
+
     @Synchronized
     fun upsert(config: CloneConfig) {
         val list = _clones.value.toMutableList()

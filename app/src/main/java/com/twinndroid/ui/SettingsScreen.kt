@@ -30,6 +30,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.twinndroid.BuildConfig
+import com.twinndroid.data.BackupManager
 import com.twinndroid.engine.SigningKeys
 import com.twinndroid.install.ShizukuInstaller
 import rikka.shizuku.Shizuku
@@ -83,9 +86,25 @@ fun SettingsScreen(vm: MainViewModel) {
         }.onFailure { vm.message = "Not a valid TwinnDroid key: ${it.message}" }
     }
 
+    val exportBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) runCatching {
+            context.contentResolver.openOutputStream(uri)!!.use { BackupManager.export(context, it) }
+        }.onSuccess { vm.message = "Backup saved." }.onFailure { vm.message = "Backup failed: ${it.message}" }
+    }
+    val importBackup = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) runCatching {
+            context.contentResolver.openInputStream(uri)!!.use { BackupManager.restore(context, it) }
+            fingerprint = SigningKeys.fingerprint(context)
+            useShizuku = vm.settings.useShizuku
+            autoUpdate = vm.settings.autoUpdate
+        }.onSuccess { vm.message = "Backup restored. Your clones are back." }.onFailure { vm.message = "Restore failed: ${it.message}" }
+    }
+
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
                 title = { Text("Settings") },
                 navigationIcon = { IconButton(onClick = { vm.screen = Screen.Home }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
             )
@@ -151,6 +170,19 @@ fun SettingsScreen(vm: MainViewModel) {
                 }
             }
 
+            SettingsCard("Backup & restore") {
+                Text(
+                    "Saves your clone list, signing key, imported APKs, icons and settings to one file. Restore it after " +
+                        "reinstalling TwinnDroid or on a new phone and your clones keep updating.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { exportBackup.launch("TwinnDroid-backup.zip") }) { Text("Back up") }
+                    OutlinedButton(onClick = { importBackup.launch(arrayOf("application/zip", "application/octet-stream", "*/*")) }) { Text("Restore") }
+                }
+            }
+
             SettingsCard("About") {
                 Text("TwinnDroid ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(4.dp))
@@ -168,10 +200,7 @@ fun SettingsScreen(vm: MainViewModel) {
 
 @Composable
 private fun SettingsCard(title: String, content: @Composable () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = RoundedCornerShape(24.dp),
-    ) {
+    TwinnCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(8.dp))

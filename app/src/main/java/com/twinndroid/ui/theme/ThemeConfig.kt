@@ -11,6 +11,22 @@ import kotlinx.serialization.json.Json
 @Serializable
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
+@Serializable
+enum class BgAnimation(val label: String) {
+    SPACE("Space"),
+    PARTICLES("Particles"),
+    CIRCLES("Circles"),
+    RINGS("Rings"),
+    MESH("Mesh"),
+    SHAPES("Shapes"),
+    SNOW("Snow"),
+    GRID("Grid"),
+    LAVA("Lava lamp"),
+    AURORA("Aurora"),
+    NONE("None"),
+    RANDOM("Random"),
+}
+
 /** The user-editable colour "aspects" of the app. Values are ARGB. */
 @Serializable
 data class Palette(
@@ -106,6 +122,15 @@ data class ThemeConfig(
     /** When set, replaces the preset entirely (the palette's own background decides light/dark). */
     val custom: Palette? = null,
     val fontScale: Float = 1f,
+    val background: BgAnimation = BgAnimation.SPACE,
+    /** Background drifts slightly when the phone is tilted. */
+    val parallax: Boolean = true,
+    /** True-black background in dark mode (saves battery on OLED). */
+    val pureBlack: Boolean = false,
+    /** Thin edge around cards, panels and buttons. */
+    val outlines: Boolean = true,
+    /** Translucent cards that let the background animation show through. */
+    val glassCards: Boolean = true,
 ) {
     fun palette(systemDark: Boolean): Palette {
         custom?.let { return it }
@@ -128,6 +153,10 @@ class ThemeRepository private constructor(context: Context) {
     private fun load(): ThemeConfig = runCatching {
         prefs.getString("config", null)?.let { json.decodeFromString<ThemeConfig>(it) }
     }.getOrNull() ?: ThemeConfig()
+
+    fun reload() {
+        _config.value = load()
+    }
 
     fun update(transform: (ThemeConfig) -> ThemeConfig) {
         val next = transform(_config.value)

@@ -53,6 +53,19 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.material.icons.automirrored.rounded.RotateRight
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Colorize
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Slider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +78,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.twinndroid.data.IconAdjust
 import com.twinndroid.data.IconMode
 import com.twinndroid.data.SourceKind
 
@@ -92,14 +106,16 @@ fun EditorScreen(vm: MainViewModel) {
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
                 title = { Text(if (state.isNew) "New clone" else "Customize clone") },
                 navigationIcon = { IconButton(onClick = vm::closeEditor) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
             )
         },
         bottomBar = {
-            Surface(tonalElevation = 3.dp) {
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f)) {
                 Button(
                     onClick = vm::saveAndBuild,
                     modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp).height(52.dp),
@@ -219,6 +235,8 @@ fun EditorScreen(vm: MainViewModel) {
                     }
                     IconMode.ORIGINAL -> Unit
                 }
+                Spacer(Modifier.height(8.dp))
+                IconAdjustPanel(c.iconAdjust) { a -> vm.updateConfig { it.copy(iconAdjust = a) } }
             }
 
             Section("Permissions") {
@@ -281,7 +299,7 @@ fun EditorScreen(vm: MainViewModel) {
                 }
             }
 
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            TwinnCard(container = MaterialTheme.colorScheme.surfaceContainerLow) {
                 Row(Modifier.padding(16.dp)) {
                     Icon(Icons.Rounded.Info, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(12.dp))
@@ -299,14 +317,108 @@ fun EditorScreen(vm: MainViewModel) {
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = RoundedCornerShape(24.dp),
-    ) {
+    TwinnCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(12.dp))
             content()
         }
+    }
+}
+
+private val TINTS = listOf(0xFF7C4DFF, 0xFF2962FF, 0xFF00BFA5, 0xFF43A047, 0xFFFFC107, 0xFFFF6F00, 0xFFE53935, 0xFFEC407A, 0xFF000000, 0xFFFFFFFF)
+
+/** App Cloner-style icon colour controls. Changes re-render the preview live. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun IconAdjustPanel(a: IconAdjust, onChange: (IconAdjust) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(!a.isIdentity) }
+    var customTint by remember { mutableStateOf(false) }
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { open = !open }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Rounded.Tune, null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Colour & tint")
+            Text(
+                if (a.isIdentity) "Hue, saturation, brightness, tint, flip" else "Adjusted",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, null)
+    }
+    AnimatedVisibility(open, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+        Column {
+            AdjustSlider("Hue", "${a.hue.toInt()}°", a.hue, -180f..180f) { onChange(a.copy(hue = it)) }
+            AdjustSlider("Saturation", "${(a.saturation * 100).toInt()}%", a.saturation, 0f..2f) { onChange(a.copy(saturation = it)) }
+            AdjustSlider("Brightness", "${(a.brightness * 100).toInt()}", a.brightness, -0.6f..0.6f) { onChange(a.copy(brightness = it)) }
+            AdjustSlider("Contrast", "${(a.contrast * 100).toInt()}", a.contrast, -0.5f..0.5f) { onChange(a.copy(contrast = it)) }
+
+            Text("Tint", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    Modifier.size(32.dp).clip(CircleShape)
+                        .border(if (a.tint == null) 3.dp else 1.dp, if (a.tint == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        .clickable { onChange(a.copy(tint = null)) },
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Block, "No tint", Modifier.size(18.dp)) }
+                TINTS.forEach { t ->
+                    Box(
+                        Modifier.size(32.dp).clip(CircleShape).background(Color(t))
+                            .border(
+                                if (a.tint == t) 3.dp else 1.dp,
+                                if (a.tint == t) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                                CircleShape,
+                            )
+                            .clickable { onChange(a.copy(tint = t)) },
+                    )
+                }
+                Box(
+                    Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                        .clickable { customTint = true },
+                    contentAlignment = Alignment.Center,
+                ) { Icon(Icons.Rounded.Colorize, "Custom colour", Modifier.size(18.dp)) }
+            }
+            AnimatedVisibility(a.tint != null) {
+                AdjustSlider("Tint strength", "${(a.tintStrength * 100).toInt()}%", a.tintStrength, 0.1f..1f) { onChange(a.copy(tintStrength = it)) }
+            }
+
+            Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(selected = a.invert, onClick = { onChange(a.copy(invert = !a.invert)) }, label = { Text("Invert") })
+                FilterChip(selected = a.flip, onClick = { onChange(a.copy(flip = !a.flip)) }, label = { Text("Flip") })
+                FilterChip(
+                    selected = a.rotation != 0,
+                    onClick = { onChange(a.copy(rotation = (a.rotation + 90) % 360)) },
+                    label = { Text(if (a.rotation == 0) "Rotate" else "Rotate ${a.rotation}°") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.RotateRight, null, Modifier.size(18.dp)) },
+                )
+            }
+            if (!a.isIdentity) {
+                TextButton(onClick = { onChange(IconAdjust()) }) { Text("Reset adjustments") }
+            }
+        }
+    }
+    if (customTint) {
+        ColorPickerDialog(
+            title = "Tint colour",
+            initial = a.tint ?: 0xFF7C4DFF,
+            onDismiss = { customTint = false },
+            onApply = { v -> onChange(a.copy(tint = v)); customTint = false },
+        )
+    }
+}
+
+@Composable
+private fun AdjustSlider(label: String, value: String, v: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
+    Column(Modifier.padding(top = 4.dp)) {
+        Row {
+            Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            Text(value, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Slider(value = v, onValueChange = onChange, valueRange = range)
     }
 }

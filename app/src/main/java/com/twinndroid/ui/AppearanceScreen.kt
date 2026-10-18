@@ -32,6 +32,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.AcUnit
+import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.BubbleChart
+import androidx.compose.material.icons.rounded.Gradient
+import androidx.compose.material.icons.rounded.Pentagon
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.TripOrigin
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.WaterDrop
+import androidx.compose.material.icons.rounded.Waves
+import com.twinndroid.ui.theme.BgAnimation
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -51,6 +64,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -98,8 +112,10 @@ fun AppearanceScreen(vm: MainViewModel) {
     }
 
     Scaffold(
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent, scrolledContainerColor = Color.Transparent),
                 title = { Text("Appearance") },
                 navigationIcon = { IconButton(onClick = { vm.screen = Screen.Home }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Back") } },
             )
@@ -167,6 +183,43 @@ fun AppearanceScreen(vm: MainViewModel) {
                         }
                     }
                 }
+            }
+
+            Panel("Background & effects") {
+                Hint("The animation that plays behind every screen. It pauses when TwinnDroid isn't visible.")
+                Spacer(Modifier.height(12.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    maxItemsInEachRow = 3,
+                ) {
+                    BgAnimation.entries.forEach { anim ->
+                        val selected = cfg.background == anim
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f))
+                                .border(
+                                    if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                                    else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                                    RoundedCornerShape(16.dp),
+                                )
+                                .clickable { repo.update { it.copy(background = anim) } }
+                                .padding(vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(bgIcon(anim), null, tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.height(4.dp))
+                            Text(anim.label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                ToggleLine("Parallax", "Background shifts gently when you tilt the phone", cfg.parallax) { v -> repo.update { it.copy(parallax = v) } }
+                ToggleLine("Pure black", "True black background in dark mode, easier on OLED batteries", cfg.pureBlack) { v -> repo.update { it.copy(pureBlack = v) } }
+                ToggleLine("Glass cards", "Translucent cards that let the background show through", cfg.glassCards) { v -> repo.update { it.copy(glassCards = v) } }
+                ToggleLine("Outlines", "Thin edge around cards, panels and tabs", cfg.outlines) { v -> repo.update { it.copy(outlines = v) } }
             }
 
             Panel("Custom colours") {
@@ -308,13 +361,13 @@ fun AppearanceScreen(vm: MainViewModel) {
             title = { Text("Switch to ${icon.name} icon?") },
             text = {
                 Text(
-                    "Your launcher updates the icon in a few seconds. A TwinnDroid shortcut on your home screen may " +
+                    "The new icon is applied when you leave TwinnDroid. A TwinnDroid shortcut on your home screen may " +
                         "disappear; add it again from the app drawer.",
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
-                    AppIcons.apply(context, icon)
+                    AppIcons.choose(context, icon)
                     currentIcon = icon
                     pendingIcon = null
                 }) { Text("Switch") }
@@ -326,16 +379,43 @@ fun AppearanceScreen(vm: MainViewModel) {
 
 @Composable
 private fun Panel(title: String, content: @Composable () -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = RoundedCornerShape(24.dp),
-    ) {
+    TwinnCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
             Spacer(Modifier.height(10.dp))
             content()
         }
     }
+}
+
+@Composable
+private fun ToggleLine(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onChange(!checked) }.padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title)
+            Hint(subtitle)
+        }
+        Spacer(Modifier.width(12.dp))
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+private fun bgIcon(anim: BgAnimation) = when (anim) {
+    BgAnimation.SPACE -> Icons.Rounded.AutoAwesome
+    BgAnimation.PARTICLES -> Icons.Rounded.BubbleChart
+    BgAnimation.CIRCLES -> Icons.Rounded.RadioButtonUnchecked
+    BgAnimation.RINGS -> Icons.Rounded.TripOrigin
+    BgAnimation.MESH -> Icons.Rounded.Gradient
+    BgAnimation.SHAPES -> Icons.Rounded.Pentagon
+    BgAnimation.SNOW -> Icons.Rounded.AcUnit
+    BgAnimation.GRID -> Icons.Rounded.Apps
+    BgAnimation.LAVA -> Icons.Rounded.WaterDrop
+    BgAnimation.AURORA -> Icons.Rounded.Waves
+    BgAnimation.NONE -> Icons.Rounded.VisibilityOff
+    BgAnimation.RANDOM -> Icons.Rounded.Shuffle
 }
 
 @Composable

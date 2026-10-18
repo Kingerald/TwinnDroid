@@ -29,6 +29,7 @@ class AppIcon(
 
 object AppIcons {
     private const val PREFIX = "com.twinndroid.Launcher"
+    private const val PREF = "launcher_icon"
 
     val all = listOf(
         AppIcon("Twinn", "TwinnDroid", R.drawable.ic_launcher_foreground, Color(0xFF1E1450), Color(0xFF7C4DFF)),
@@ -42,7 +43,9 @@ object AppIcons {
 
     private fun component(context: Context, icon: AppIcon) = ComponentName(context.packageName, PREFIX + icon.alias)
 
-    fun current(context: Context): AppIcon {
+    private fun prefs(context: Context) = context.getSharedPreferences("theme", Context.MODE_PRIVATE)
+
+    private fun enabled(context: Context): AppIcon {
         val pm = context.packageManager
         return all.firstOrNull { icon ->
             when (pm.getComponentEnabledSetting(component(context, icon))) {
@@ -53,21 +56,27 @@ object AppIcons {
         } ?: all.first()
     }
 
-    /** Enables the chosen launcher entry first, then disables the rest, so the app never has zero launchers. */
-    fun apply(context: Context, icon: AppIcon) {
+    /** The chosen icon (it may not be applied yet; see [applyPending]). */
+    fun current(context: Context): AppIcon =
+        prefs(context).getString(PREF, null)?.let { a -> all.firstOrNull { it.alias == a } } ?: enabled(context)
+
+    /**
+     * Saves the choice. Switching launcher entries closes any task started from the old one,
+     * so the actual switch happens in [applyPending] once TwinnDroid is in the background.
+     */
+    fun choose(context: Context, icon: AppIcon) {
+        prefs(context).edit().putString(PREF, icon.alias).apply()
+    }
+
+    /** Called from MainActivity.onStop. Enables the chosen entry first so there is never zero launchers. */
+    fun applyPending(context: Context) {
+        val icon = current(context)
+        if (icon === enabled(context)) return
         val pm = context.packageManager
-        pm.setComponentEnabledSetting(
-            component(context, icon),
-            PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-            PackageManager.DONT_KILL_APP,
-        )
+        pm.setComponentEnabledSetting(component(context, icon), PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
         for (other in all) {
             if (other === icon) continue
-            pm.setComponentEnabledSetting(
-                component(context, other),
-                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                PackageManager.DONT_KILL_APP,
-            )
+            pm.setComponentEnabledSetting(component(context, other), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
         }
     }
 

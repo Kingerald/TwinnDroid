@@ -99,13 +99,13 @@ class CloneEngine(
         return entry.resourceId
     }
 
-    private fun stripSignatures(module: ApkModule) {
+    internal fun stripSignatures(module: ApkModule) {
         val sigFile = Regex("^META-INF/[^/]+\\.(SF|RSA|DSA|EC|MF)$", RegexOption.IGNORE_CASE)
         module.zipEntryMap.removeIf { src -> sigFile.matches(src.alias) || src.alias == "stamp-cert-sha256" }
         module.apkSignatureBlock = null
     }
 
-    private fun sign(input: File, output: File, key: SigningKeys.Key, minSdk: Int) {
+    internal fun sign(input: File, output: File, key: SigningKeys.Key, minSdk: Int) {
         val signer = ApkSigner.SignerConfig.Builder("TWINN", KeyConfig.Jca(key.privateKey), listOf(key.certificate)).build()
         ApkSigner.Builder(listOf(signer))
             .setInputApk(input)

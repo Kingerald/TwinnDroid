@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -14,15 +16,39 @@ android {
         applicationId = "com.twinndroid"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
+    }
+
+    // Release key: keystore.properties next to the project, in ~/.twinndroid-signing/, or TWINN_KEYSTORE_* env vars.
+    // Never committed. Without it, release builds fall back to the debug key.
+    val keyProps = Properties().apply {
+        listOf(rootProject.file("keystore.properties"), File(System.getProperty("user.home"), ".twinndroid-signing/keystore.properties"))
+            .firstOrNull { it.exists() }?.inputStream()?.use { load(it) }
+        System.getenv("TWINN_KEYSTORE_FILE")?.let {
+            this["storeFile"] = it
+            this["storePassword"] = System.getenv("TWINN_KEYSTORE_PASSWORD")
+            this["keyAlias"] = System.getenv("TWINN_KEY_ALIAS") ?: "twinndroid"
+            this["keyPassword"] = System.getenv("TWINN_KEY_PASSWORD") ?: System.getenv("TWINN_KEYSTORE_PASSWORD")
+        }
+    }
+    signingConfigs {
+        if (keyProps["storeFile"] != null) {
+            create("release") {
+                storeFile = file(keyProps["storeFile"] as String)
+                storePassword = keyProps["storePassword"] as String
+                keyAlias = keyProps["keyAlias"] as String
+                keyPassword = keyProps["keyPassword"] as String
+            }
+        }
     }
 
     buildTypes {
         release {
-            // R8 is left off: ARSCLib, apksig and BouncyCastle rely on reflection/service lookups.
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
