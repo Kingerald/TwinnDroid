@@ -14,6 +14,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +42,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.util.lerp
 import com.twinndroid.ui.theme.AnimatedBackground
+import com.twinndroid.ui.theme.Backdrop
+import com.twinndroid.ui.theme.LocalBackdrop
+import com.twinndroid.ui.theme.rememberBackdrop
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 
@@ -51,15 +59,18 @@ fun TwinnRoot(vm: MainViewModel) {
     BackHandler(enabled = vm.screen != Screen.Home && vm.build == null) {
         when (vm.screen) {
             Screen.Editor -> vm.closeEditor()
+            Screen.Background, Screen.Header -> vm.screen = Screen.Appearance
             else -> vm.screen = Screen.Home
         }
     }
     BackHandler(enabled = vm.build?.running == false) { vm.dismissBuild() }
 
+    val backdrop = rememberBackdrop()
     // Pages aren't inside a Scaffold/Surface, so set the content colour explicitly.
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.material3.LocalContentColor provides androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-    ) { RootContent(vm) }
+        LocalBackdrop provides backdrop,
+    ) { RootContent(vm, backdrop) }
 
     vm.message?.let { msg ->
         AlertDialog(
@@ -71,14 +82,16 @@ fun TwinnRoot(vm: MainViewModel) {
 }
 
 @Composable
-private fun RootContent(vm: MainViewModel) {
+private fun RootContent(vm: MainViewModel, backdrop: Backdrop) {
     Box(Modifier.fillMaxSize()) {
-        AnimatedBackground()
+        AnimatedBackground(backdrop)
 
+        val uiAlpha by androidx.compose.animation.core.animateFloatAsState(if (vm.peek) 0f else 1f, label = "peek")
         AnimatedContent(
+            modifier = Modifier.graphicsLayer { alpha = uiAlpha },
             targetState = vm.screen,
             transitionSpec = {
-                val forward = targetState != Screen.Home
+                val forward = targetState.ordinal > initialState.ordinal
                 val enter = slideInHorizontally(spring(stiffness = Spring.StiffnessMediumLow)) { w -> if (forward) w / 4 else -w / 4 } +
                     fadeIn(tween(220))
                 val exit = slideOutHorizontally(spring(stiffness = Spring.StiffnessMediumLow)) { w -> if (forward) -w / 6 else w / 6 } +
@@ -92,6 +105,24 @@ private fun RootContent(vm: MainViewModel) {
                 Screen.Editor -> EditorScreen(vm)
                 Screen.Settings -> SettingsScreen(vm)
                 Screen.Appearance -> AppearanceScreen(vm)
+                Screen.Background -> BackgroundScreen(vm)
+                Screen.Header -> HeaderSettingsScreen(vm)
+            }
+        }
+
+        if (vm.peek) {
+            Box(
+                Modifier.fillMaxSize().clickable(
+                    interactionSource = androidx.compose.runtime.remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null,
+                ) { vm.peek = false },
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Text(
+                    "Tap anywhere to return",
+                    modifier = Modifier.navigationBarsPadding().padding(32.dp),
+                    color = androidx.compose.material3.MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                )
             }
         }
 

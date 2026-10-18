@@ -32,7 +32,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 
-enum class Screen { Home, Editor, Settings, Appearance }
+enum class Screen { Home, Editor, Settings, Appearance, Background, Header }
 
 data class AppEntry(val packageName: String, val label: String, val icon: ImageBitmap?, val isSystem: Boolean)
 
@@ -93,6 +93,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private set
     /** Selected bottom tab; kept here so it survives visiting Settings/Editor. */
     var tab by mutableIntStateOf(0)
+    /** Hides the UI so the background animation can be seen on its own. */
+    var peek by mutableStateOf(false)
     var message by mutableStateOf<String?>(null)
     var busy by mutableStateOf(false)
         private set

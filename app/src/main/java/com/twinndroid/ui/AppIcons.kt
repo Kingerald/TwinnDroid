@@ -39,7 +39,14 @@ object AppIcons {
         AppIcon("Sunset", "Sunset", R.drawable.ic_launcher_sunset_foreground, Color(0xFFB71C1C), Color(0xFFFF6F00)),
         AppIcon("Rose", "Rose", R.drawable.ic_launcher_rose_foreground, Color(0xFF880E4F), Color(0xFFEC407A)),
         AppIcon("Mono", "Mono", R.drawable.ic_launcher_mono_foreground, Color(0xFFFFFFFF), Color(0xFFE0E0E0)),
+        AppIcon("Lavender", "Lavender", R.drawable.ic_launcher_lavender_foreground, Color(0xFF0B0B12), Color(0xFF2A2540)),
+        AppIcon("Cyberpunk", "Cyberpunk", R.drawable.ic_launcher_cyberpunk_foreground, Color(0xFF0D0221), Color(0xFF3A0CA3)),
+        AppIcon("Nord", "Nord", R.drawable.ic_launcher_nord_foreground, Color(0xFF2E3440), Color(0xFF3B4252)),
+        AppIcon("Dracula", "Dracula", R.drawable.ic_launcher_dracula_foreground, Color(0xFF282A36), Color(0xFF44475A)),
+        AppIcon("Matcha", "Matcha", R.drawable.ic_launcher_matcha_foreground, Color(0xFF7A9A55), Color(0xFFA8C686)),
     )
+
+    fun byAlias(alias: String): AppIcon? = all.firstOrNull { it.alias == alias }
 
     private fun component(context: Context, icon: AppIcon) = ComponentName(context.packageName, PREFIX + icon.alias)
 

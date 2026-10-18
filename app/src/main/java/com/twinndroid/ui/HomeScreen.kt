@@ -77,7 +77,7 @@ fun ClonesPage(vm: MainViewModel, onNewClone: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "header") {
-            Header(
+            HomeHeader(
                 vm.clones.size,
                 vm.clones.count { it.updateAvailable },
                 onAppearance = { vm.screen = Screen.Appearance },
@@ -131,35 +131,6 @@ fun ClonesPage(vm: MainViewModel, onNewClone: () -> Unit) {
             confirmButton = { TextButton(onClick = { vm.delete(item.config); confirmDelete = null }) { Text("Remove") } },
             dismissButton = { TextButton(onClick = { confirmDelete = null }) { Text("Cancel") } },
         )
-    }
-}
-
-@Composable
-private fun Header(count: Int, updates: Int, onAppearance: () -> Unit, onSettings: () -> Unit) {
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
-            .background(LocalTwinnExtras.current.headerBrush)
-            .statusBarsPadding()
-            .padding(start = 24.dp, end = 12.dp, top = 12.dp, bottom = 28.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.size(64.dp))
-            Spacer(Modifier.width(8.dp))
-            Column(Modifier.weight(1f)) {
-                Text("TwinnDroid", style = MaterialTheme.typography.headlineMedium, color = Color.White)
-                Text(
-                    buildString {
-                        append(if (count == 1) "1 clone" else "$count clones")
-                        if (updates > 0) append(" · $updates update${if (updates > 1) "s" else ""}")
-                    },
-                    color = Color.White.copy(alpha = 0.8f),
-                )
-            }
-            IconButton(onClick = onAppearance) { Icon(Icons.Rounded.Palette, "Appearance", tint = Color.White) }
-            IconButton(onClick = onSettings) { Icon(Icons.Rounded.Settings, "Settings", tint = Color.White) }
-        }
     }
 }
 

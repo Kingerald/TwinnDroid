@@ -32,6 +32,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.EmojiObjects
+import androidx.compose.material.icons.rounded.Flare
+import androidx.compose.material.icons.rounded.Lens
+import androidx.compose.material.icons.rounded.NightsStay
+import androidx.compose.material.icons.rounded.ViewDay
 import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -164,7 +170,10 @@ fun AppearanceScreen(vm: MainViewModel) {
                                     else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                     RoundedCornerShape(16.dp),
                                 )
-                                .clickable { repo.update { it.copy(presetId = preset.id, custom = null, dynamicColor = false) } }
+                                .clickable {
+                                    repo.update { it.copy(presetId = preset.id, custom = null, dynamicColor = false) }
+                                    if (cfg.matchIcon) AppIcons.byAlias(preset.icon)?.let { AppIcons.choose(context, it); currentIcon = it }
+                                }
                                 .background(Color(p.background)),
                         ) {
                             Box(Modifier.fillMaxWidth().height(26.dp).background(Brush.linearGradient(listOf(Color(p.headerStart), Color(p.headerEnd)))))
@@ -183,40 +192,23 @@ fun AppearanceScreen(vm: MainViewModel) {
                         }
                     }
                 }
+                ToggleLine("Match app icon", "Switch TwinnDroid's own icon along with the preset", cfg.matchIcon) { v ->
+                    repo.update { it.copy(matchIcon = v) }
+                    if (v) AppIcons.byAlias(ThemePresets.byId(cfg.presetId).icon)?.let { AppIcons.choose(context, it); currentIcon = it }
+                }
             }
 
             Panel("Background & effects") {
-                Hint("The animation that plays behind every screen. It pauses when TwinnDroid isn't visible.")
-                Spacer(Modifier.height(12.dp))
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    maxItemsInEachRow = 3,
-                ) {
-                    BgAnimation.entries.forEach { anim ->
-                        val selected = cfg.background == anim
-                        Column(
-                            Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.7f))
-                                .border(
-                                    if (selected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
-                                    else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                    RoundedCornerShape(16.dp),
-                                )
-                                .clickable { repo.update { it.copy(background = anim) } }
-                                .padding(vertical = 12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Icon(bgIcon(anim), null, tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.height(4.dp))
-                            Text(anim.label, style = MaterialTheme.typography.labelMedium, maxLines = 1)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                ToggleLine("Parallax", "Background shifts gently when you tilt the phone", cfg.parallax) { v -> repo.update { it.copy(parallax = v) } }
+                NavRow(
+                    bgIcon(cfg.background),
+                    "Background animation",
+                    cfg.background.label + if (cfg.parallax) " · Parallax" else "",
+                ) { vm.screen = Screen.Background }
+                NavRow(
+                    Icons.Rounded.ViewDay,
+                    "Home header",
+                    cfg.header.style.label + if (cfg.header.pills) " · Pills" else "",
+                ) { vm.screen = Screen.Header }
                 ToggleLine("Pure black", "True black background in dark mode, easier on OLED batteries", cfg.pureBlack) { v -> repo.update { it.copy(pureBlack = v) } }
                 ToggleLine("Glass cards", "Translucent cards that let the background show through", cfg.glassCards) { v -> repo.update { it.copy(glassCards = v) } }
                 ToggleLine("Outlines", "Thin edge around cards, panels and tabs", cfg.outlines) { v -> repo.update { it.copy(outlines = v) } }
@@ -378,7 +370,7 @@ fun AppearanceScreen(vm: MainViewModel) {
 }
 
 @Composable
-private fun Panel(title: String, content: @Composable () -> Unit) {
+internal fun Panel(title: String, content: @Composable () -> Unit) {
     TwinnCard {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
@@ -389,7 +381,7 @@ private fun Panel(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ToggleLine(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun ToggleLine(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { onChange(!checked) }.padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -403,7 +395,23 @@ private fun ToggleLine(title: String, subtitle: String, checked: Boolean, onChan
     }
 }
 
-private fun bgIcon(anim: BgAnimation) = when (anim) {
+@Composable
+internal fun NavRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, value: String, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title)
+            Hint(value)
+        }
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null)
+    }
+}
+
+internal fun bgIcon(anim: BgAnimation) = when (anim) {
     BgAnimation.SPACE -> Icons.Rounded.AutoAwesome
     BgAnimation.PARTICLES -> Icons.Rounded.BubbleChart
     BgAnimation.CIRCLES -> Icons.Rounded.RadioButtonUnchecked
@@ -413,12 +421,16 @@ private fun bgIcon(anim: BgAnimation) = when (anim) {
     BgAnimation.SNOW -> Icons.Rounded.AcUnit
     BgAnimation.GRID -> Icons.Rounded.Apps
     BgAnimation.LAVA -> Icons.Rounded.WaterDrop
-    BgAnimation.AURORA -> Icons.Rounded.Waves
+    BgAnimation.AURORA -> Icons.Rounded.NightsStay
+    BgAnimation.WAVES -> Icons.Rounded.Waves
+    BgAnimation.FIREFLIES -> Icons.Rounded.EmojiObjects
+    BgAnimation.BOKEH -> Icons.Rounded.Lens
+    BgAnimation.METEORS -> Icons.Rounded.Flare
     BgAnimation.NONE -> Icons.Rounded.VisibilityOff
     BgAnimation.RANDOM -> Icons.Rounded.Shuffle
 }
 
 @Composable
-private fun Hint(text: String) {
+internal fun Hint(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }

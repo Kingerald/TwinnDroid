@@ -113,6 +113,67 @@
             </intent-filter>
         </activity-alias>
 
+        <activity-alias
+            android:name=".LauncherLavender"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_lavender"
+            android:roundIcon="@mipmap/ic_launcher_lavender"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherCyberpunk"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_cyberpunk"
+            android:roundIcon="@mipmap/ic_launcher_cyberpunk"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherNord"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_nord"
+            android:roundIcon="@mipmap/ic_launcher_nord"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherDracula"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_dracula"
+            android:roundIcon="@mipmap/ic_launcher_dracula"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+        <activity-alias
+            android:name=".LauncherMatcha"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_matcha"
+            android:roundIcon="@mipmap/ic_launcher_matcha"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
         <receiver
             android:name=".install.InstallReceiver"
             android:exported="false" />

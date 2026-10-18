@@ -37,6 +37,7 @@ data class TwinnExtras(
     val parallax: Boolean = true,
     val outlines: Boolean = true,
     val glassCards: Boolean = true,
+    val header: HeaderSettings = HeaderSettings(),
 )
 
 val LocalTwinnExtras = staticCompositionLocalOf {
@@ -134,6 +135,7 @@ fun TwinnTheme(config: ThemeConfig = ThemeConfig(), content: @Composable () -> U
         parallax = config.parallax,
         outlines = config.outlines,
         glassCards = config.glassCards,
+        header = config.header,
     )
 
     val view = LocalView.current

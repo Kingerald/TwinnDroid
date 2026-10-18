@@ -19,7 +19,7 @@ No root. No virtual space. Each copy is a real, separately installed app.
 - 🔄 **Keep clones updated**: when the original app updates, TwinnDroid tells you, and one tap updates the copy *without logging you out*
 - 📦 **Extract APKs**: save any installed app, splits included, as `.apk`, `.apks`, `.xapk`, `.apkm`, or one merged `.apk`
 - ⚡ **Optional prompt-free installs** with [Shizuku](https://shizuku.rikka.app/)
-- 🌈 **Make TwinnDroid yours**: animated backgrounds, theme presets, your own colours (hex or colour picker), Material You, glass cards, text size, and 7 app icons (or your own picture)
+- 🌈 **Make TwinnDroid yours**: 14 animated backgrounds, 12 theme presets (each with a matching app icon), your own colours (hex or colour picker), Material You, a customisable frosted-glass header, glass cards, text size, and 12 app icons (or your own picture)
 - 💾 **Backup & restore**: move your clones, signing key and settings to a new phone or a fresh install
 
 ## 📱 Requirements
@@ -77,16 +77,16 @@ Tap the 🎨 palette button on the Clones tab:
 
 | Setting | What it does |
 |---|---|
-| **Background** | Space, Particles, Circles, Rings, Mesh, Shapes, Snow, Grid, Lava lamp, Aurora, None or Random. It pauses when TwinnDroid is in the background and turns off when Android's "Remove animations" is on. |
-| **Parallax** | Background drifts gently when you tilt the phone |
+| **Background & effects** | Space, Particles, Circles, Rings, Mesh, Shapes, Snow, Grid, Lava lamp, Aurora, Waves, Fireflies, Bokeh, Meteors, None or Random, plus tilt **Parallax**. Tap **Preview background** to see it without the interface. It pauses when TwinnDroid is in the background and turns off when Android's "Remove animations" is on. Inspired by [Morphe Patcher](https://github.com/MorpheApp/morphe-manager). |
+| **Home header** | Gradient, Glass, Solid or None, with opacity, real background blur (Android 12+), roundness and a floating style. Optional frosted pills behind the icon, title and buttons, each with their own opacity, blur and roundness. |
 | **Pure black** | True-black dark mode for OLED screens |
 | **Glass cards / Outlines** | Translucent cards and thin edges |
-| **Presets** | TwinnDroid, Midnight AMOLED, Ocean, Forest, Sunset, Rose, High contrast |
+| **Presets** | TwinnDroid, Midnight AMOLED, Ocean, Forest, Sunset, Rose, High contrast, Lavender, Cyberpunk, Nord, Dracula, Matcha. Turn on **Match app icon** to switch TwinnDroid's icon with the theme. |
 | **System / Light / Dark** | Follow your phone, or force a mode |
 | **Material You** | Use colours from your wallpaper (Android 12+) |
 | **Custom colours** | Change accent, secondary, tertiary, background, cards and header gradient with a colour picker or hex code |
 | **Text size** | 85% – 140% |
-| **App icon** | 7 built-in icons, or add a home-screen shortcut with your own picture |
+| **App icon** | 12 built-in icons, or add a home-screen shortcut with your own picture |
 
 ## 💾 Back up TwinnDroid!
 
@@ -204,5 +204,7 @@ It's built on these open-source projects:
 - [Shizuku API](https://github.com/RikkaApps/Shizuku-API) (Apache 2.0)
 - [Bouncy Castle](https://www.bouncycastle.org/) (MIT)
 - Jetpack Compose, Material 3, WorkManager (Apache 2.0)
+
+The background animations and appearance settings are inspired by [Morphe Patcher](https://github.com/MorpheApp/morphe-manager)'s design. TwinnDroid's implementations are its own, and no Morphe code is included.
 
 > TwinnDroid is not affiliated with any of the apps you clone. Use clones in line with each app's terms of service.
