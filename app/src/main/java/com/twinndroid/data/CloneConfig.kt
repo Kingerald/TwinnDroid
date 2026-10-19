@@ -14,7 +14,7 @@ enum class SourceKind {
 @Serializable
 enum class IconMode { ORIGINAL, BADGE, CUSTOM }
 
-/** App Cloner-style colour adjustments applied to the clone's icon before any badge. */
+/** Colour adjustments applied to the clone's icon before any badge. */
 @Serializable
 data class IconAdjust(
     /** Hue rotation in degrees, -180..180. */

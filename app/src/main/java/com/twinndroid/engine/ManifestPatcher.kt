@@ -7,7 +7,7 @@ import com.reandroid.arsc.value.ValueType
 
 /**
  * Rewrites a binary AndroidManifest so the app can be installed side by side with the original,
- * the same way App Cloner does it: new package name, unique provider authorities and custom
+ * the same way other no-root cloning apps do it: new package name, unique provider authorities and custom
  * permissions, no shared user id. Attributes are matched by resource id so obfuscated
  * manifests (stripped attribute names) still work.
  */

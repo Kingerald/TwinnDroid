@@ -8,7 +8,7 @@
 
 No root. No virtual space. Each copy is a real, separately installed app.
 
-[Download](../../releases/latest) · [Changelog](CHANGELOG.md)
+[Download](../../releases/latest) · [Changelog](CHANGELOG.md) · [Support on Ko-fi](https://ko-fi.com/vvanadium)
 
 </div>
 
@@ -102,11 +102,11 @@ TwinnDroid signs every clone with its own key. **If you uninstall TwinnDroid, th
 
 ## ❓ Which apps work?
 
-Most apps work fine, such as chat apps, social apps, note apps and games without strict anti-cheat. Tested: **Discord**, **Joplin**.
+Most apps work fine, such as chat apps, social apps, note apps and games without strict anti-cheat. Tested with various social media apps, multiple tools apps, notes, and shopping apps.
 
 Some apps protect themselves and **won't work as clones**. TwinnDroid detects the common cases and **warns you in the editor before you build**, so you don't waste time on a clone that just crashes:
 
-- 🛡️ **App-shielding / anti-tamper** (Promon SHIELD and similar). These verify the app hasn't been modified and crash a re-signed clone on launch. **Supercell games like Clash Royale and Clash of Clans use this.** No no-root cloner — including App Cloner — can get past it; only a work-profile app like Shelter or Island, which runs the *unmodified* app, can.
+- 🛡️ **App-shielding / anti-tamper** (Promon SHIELD and similar). These verify the app hasn't been modified and crash a re-signed clone on launch. **Supercell games like Clash Royale and Clash of Clans use this.** No no-root cloner can get past it; only a work-profile app like Shelter or Island, which runs the *unmodified* app, can.
 - 🏦 Banking and payment apps (same anti-tamper reason).
 - 🔐 Apps that use Google Play Integrity, or whose *Sign in with Google* is tied to the original app. The clone is signed with a different key, so sign-in may refuse even if the app opens. (This is about the app's own signature check — not about Google Play Services being installed, so MicroG does not help.)
 
@@ -115,7 +115,7 @@ Other things to know:
 - 🔔 **Push notifications** may not arrive in clones (they're registered to the original app).
 - 📎 Some apps may crash when **sharing files** from a clone.
 
-This is the same for every no-root cloner, including App Cloner.
+This is the same for other cloning apps too.
 
 ## 🛠️ Troubleshooting
 
@@ -193,6 +193,12 @@ Project layout:
 | `UpdateWorker.kt` | Periodic update check / auto-update |
 
 </details>
+
+## ☕ Support
+
+TwinnDroid is free and open source. If it's useful to you, you can support its development on Ko-fi:
+
+<a href="https://ko-fi.com/vvanadium"><img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support TwinnDroid on Ko-fi" /></a>
 
 ## 🤝 Contributing
 

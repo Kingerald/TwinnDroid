@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit
  */
 object SigningKeys {
     private const val ALIAS = "twinndroid"
+    // Fixed container password for the keystore file, not a secret: the file lives in app-private
+    // storage and every install generates its own key. Changing it would break existing backups.
     private val PASSWORD = "twinndroid".toCharArray()
 
     class Key(val privateKey: PrivateKey, val certificate: X509Certificate)
