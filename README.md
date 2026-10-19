@@ -8,6 +8,8 @@
 
 No root. No virtual space. Each copy is a real, separately installed app.
 
+[Download](../../releases/latest) · [Changelog](CHANGELOG.md)
+
 </div>
 
 ---
@@ -102,11 +104,11 @@ TwinnDroid signs every clone with its own key. **If you uninstall TwinnDroid, th
 
 Most apps work fine, such as chat apps, social apps, note apps and games without strict anti-cheat. Tested: **Discord**, **Joplin**.
 
-Some apps check whether they've been modified and **won't work as clones**:
+Some apps protect themselves and **won't work as clones**. TwinnDroid detects the common cases and **warns you in the editor before you build**, so you don't waste time on a clone that just crashes:
 
-- 🏦 Banking and payment apps
-- 🛡️ Apps that use Google Play Integrity (some games, some streaming apps)
-- 🔐 Apps whose *Sign in with Google* is tied to the original app
+- 🛡️ **App-shielding / anti-tamper** (Promon SHIELD and similar). These verify the app hasn't been modified and crash a re-signed clone on launch. **Supercell games like Clash Royale and Clash of Clans use this.** No no-root cloner — including App Cloner — can get past it; only a work-profile app like Shelter or Island, which runs the *unmodified* app, can.
+- 🏦 Banking and payment apps (same anti-tamper reason).
+- 🔐 Apps that use Google Play Integrity, or whose *Sign in with Google* is tied to the original app. The clone is signed with a different key, so sign-in may refuse even if the app opens. (This is about the app's own signature check — not about Google Play Services being installed, so MicroG does not help.)
 
 Other things to know:
 
@@ -120,6 +122,7 @@ This is the same for every no-root cloner, including App Cloner.
 | Problem | Fix |
 |---|---|
 | "App not installed" / conflict error | A clone with that package already exists but was signed with a different key. Uninstall the old clone, then build again. |
+| Clone crashes or closes instantly | The app is probably shielded (anti-tamper) — the editor shows a red warning for these, and they can't run as a clone. See [Which apps work?](#-which-apps-work) |
 | Clone stuck on the loading screen | Rebuild it (**⋮ → Rebuild & reinstall**). If it still hangs, open an issue with the app name and version. |
 | Shizuku shows "not running" | Start Shizuku again (needed after every restart), then reopen TwinnDroid. |
 | Icon change didn't show up | The new icon applies when you leave TwinnDroid. Give your launcher a few seconds, and re-add TwinnDroid to your home screen from the app drawer if needed. |

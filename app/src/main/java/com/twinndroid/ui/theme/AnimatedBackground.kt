@@ -78,7 +78,9 @@ internal class BackdropColors(
     val dark: Boolean,
 ) {
     /** Overall strength: decorations are a little softer on light backgrounds. */
-    val k = if (dark) 1f else 0.65f
+    // Light mode draws on a dimmed page, so the decorations can be a touch stronger than before
+    // to actually read, while still staying subtle.
+    val k = if (dark) 1f else 1.15f
 }
 
 /**

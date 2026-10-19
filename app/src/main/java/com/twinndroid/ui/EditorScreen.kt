@@ -28,7 +28,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.GppBad
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Image
@@ -78,13 +80,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.twinndroid.data.IconAdjust
 import com.twinndroid.data.IconMode
 import com.twinndroid.data.SourceKind
-
-private val BADGE_COLORS = listOf(
-    0xFF7C4DFF, 0xFF2EE6B6, 0xFFFF4D8D, 0xFFFF9F1C, 0xFF3D8BFF, 0xFFE53935, 0xFF43A047, 0xFF212121,
-)
+import com.twinndroid.engine.TamperRisk
 
 /** Permissions people most often strip from alt-account clones. */
 private val SENSITIVE = setOf(
@@ -101,9 +99,6 @@ fun EditorScreen(vm: MainViewModel) {
     val state = vm.editor ?: return
     val c = state.config
     var permsExpanded by rememberSaveable { mutableStateOf(false) }
-    val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) vm.setCustomIcon(uri)
-    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -154,6 +149,33 @@ fun EditorScreen(vm: MainViewModel) {
                 }
             }
 
+            if (state.tamper.risk != TamperRisk.NONE) {
+                val shield = state.tamper.risk == TamperRisk.SHIELD
+                TwinnCard(container = if (shield) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceContainerHigh) {
+                    Row(Modifier.padding(16.dp)) {
+                        Icon(
+                            if (shield) Icons.Rounded.GppBad else Icons.Rounded.Info,
+                            null,
+                            tint = if (shield) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.primary,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                if (shield) "Likely won't run as a clone" else "Sign-in may not work",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = if (shield) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                state.tamper.detail,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (shield) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
             Section("Identity") {
                 OutlinedTextField(
                     value = c.label,
@@ -181,62 +203,35 @@ fun EditorScreen(vm: MainViewModel) {
             }
 
             Section("Icon") {
-                val modes = listOf(IconMode.ORIGINAL to "Original", IconMode.BADGE to "Badge", IconMode.CUSTOM to "Custom")
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    modes.forEachIndexed { i, (mode, label) ->
-                        SegmentedButton(
-                            selected = c.iconMode == mode,
-                            onClick = {
-                                if (mode == IconMode.CUSTOM && c.customIconPath == null) {
-                                    pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                } else {
-                                    vm.updateConfig { it.copy(iconMode = mode) }
-                                }
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { vm.screen = Screen.IconEditor }.padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(52.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                        contentAlignment = Alignment.Center,
+                    ) { state.preview?.let { Image(it, null, Modifier.size(44.dp)) } }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            when (c.iconMode) {
+                                IconMode.ORIGINAL -> "Original icon"
+                                IconMode.BADGE -> "Badge"
+                                IconMode.CUSTOM -> "Custom image"
                             },
-                            shape = SegmentedButtonDefaults.itemShape(i, modes.size),
-                        ) { Text(label) }
-                    }
-                }
-                when (c.iconMode) {
-                    IconMode.BADGE -> {
-                        Spacer(Modifier.height(12.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            BADGE_COLORS.forEach { color ->
-                                val selected = c.badgeColor == color
-                                Box(
-                                    Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(color))
-                                        .border(
-                                            if (selected) BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface) else BorderStroke(0.dp, Color.Transparent),
-                                            CircleShape,
-                                        )
-                                        .clickable { vm.updateConfig { it.copy(badgeColor = color) } },
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = c.badgeText,
-                            onValueChange = { v -> vm.updateConfig { it.copy(badgeText = v.take(2)) } },
-                            label = { Text("Badge text (up to 2 characters)") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text(
+                            buildString {
+                                if (c.iconMode == IconMode.BADGE) append("“${c.badgeText}” badge")
+                                if (!c.iconAdjust.isIdentity) { if (isNotEmpty()) append(" · "); append("adjusted") }
+                                if (isEmpty()) append("Name, badge, colour, tint")
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    IconMode.CUSTOM -> {
-                        Spacer(Modifier.height(12.dp))
-                        OutlinedButton(onClick = {
-                            pickImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        }) {
-                            Icon(Icons.Rounded.Image, null); Spacer(Modifier.width(8.dp)); Text("Choose another image")
-                        }
-                    }
-                    IconMode.ORIGINAL -> Unit
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null)
                 }
-                Spacer(Modifier.height(8.dp))
-                IconAdjustPanel(c.iconAdjust) { a -> vm.updateConfig { it.copy(iconAdjust = a) } }
             }
 
             Section("Permissions") {
@@ -323,102 +318,5 @@ private fun Section(title: String, content: @Composable () -> Unit) {
             Spacer(Modifier.height(12.dp))
             content()
         }
-    }
-}
-
-private val TINTS = listOf(0xFF7C4DFF, 0xFF2962FF, 0xFF00BFA5, 0xFF43A047, 0xFFFFC107, 0xFFFF6F00, 0xFFE53935, 0xFFEC407A, 0xFF000000, 0xFFFFFFFF)
-
-/** App Cloner-style icon colour controls. Changes re-render the preview live. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun IconAdjustPanel(a: IconAdjust, onChange: (IconAdjust) -> Unit) {
-    var open by rememberSaveable { mutableStateOf(!a.isIdentity) }
-    var customTint by remember { mutableStateOf(false) }
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable { open = !open }.padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(Icons.Rounded.Tune, null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text("Colour & tint")
-            Text(
-                if (a.isIdentity) "Hue, saturation, brightness, tint, flip" else "Adjusted",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Icon(if (open) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, null)
-    }
-    AnimatedVisibility(open, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-        Column {
-            AdjustSlider("Hue", "${a.hue.toInt()}°", a.hue, -180f..180f) { onChange(a.copy(hue = it)) }
-            AdjustSlider("Saturation", "${(a.saturation * 100).toInt()}%", a.saturation, 0f..2f) { onChange(a.copy(saturation = it)) }
-            AdjustSlider("Brightness", "${(a.brightness * 100).toInt()}", a.brightness, -0.6f..0.6f) { onChange(a.copy(brightness = it)) }
-            AdjustSlider("Contrast", "${(a.contrast * 100).toInt()}", a.contrast, -0.5f..0.5f) { onChange(a.copy(contrast = it)) }
-
-            Text("Tint", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(
-                    Modifier.size(32.dp).clip(CircleShape)
-                        .border(if (a.tint == null) 3.dp else 1.dp, if (a.tint == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                        .clickable { onChange(a.copy(tint = null)) },
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Rounded.Block, "No tint", Modifier.size(18.dp)) }
-                TINTS.forEach { t ->
-                    Box(
-                        Modifier.size(32.dp).clip(CircleShape).background(Color(t))
-                            .border(
-                                if (a.tint == t) 3.dp else 1.dp,
-                                if (a.tint == t) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                CircleShape,
-                            )
-                            .clickable { onChange(a.copy(tint = t)) },
-                    )
-                }
-                Box(
-                    Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
-                        .clickable { customTint = true },
-                    contentAlignment = Alignment.Center,
-                ) { Icon(Icons.Rounded.Colorize, "Custom colour", Modifier.size(18.dp)) }
-            }
-            AnimatedVisibility(a.tint != null) {
-                AdjustSlider("Tint strength", "${(a.tintStrength * 100).toInt()}%", a.tintStrength, 0.1f..1f) { onChange(a.copy(tintStrength = it)) }
-            }
-
-            Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = a.invert, onClick = { onChange(a.copy(invert = !a.invert)) }, label = { Text("Invert") })
-                FilterChip(selected = a.flip, onClick = { onChange(a.copy(flip = !a.flip)) }, label = { Text("Flip") })
-                FilterChip(
-                    selected = a.rotation != 0,
-                    onClick = { onChange(a.copy(rotation = (a.rotation + 90) % 360)) },
-                    label = { Text(if (a.rotation == 0) "Rotate" else "Rotate ${a.rotation}°") },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Rounded.RotateRight, null, Modifier.size(18.dp)) },
-                )
-            }
-            if (!a.isIdentity) {
-                TextButton(onClick = { onChange(IconAdjust()) }) { Text("Reset adjustments") }
-            }
-        }
-    }
-    if (customTint) {
-        ColorPickerDialog(
-            title = "Tint colour",
-            initial = a.tint ?: 0xFF7C4DFF,
-            onDismiss = { customTint = false },
-            onApply = { v -> onChange(a.copy(tint = v)); customTint = false },
-        )
-    }
-}
-
-@Composable
-private fun AdjustSlider(label: String, value: String, v: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit) {
-    Column(Modifier.padding(top = 4.dp)) {
-        Row {
-            Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
-            Text(value, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Slider(value = v, onValueChange = onChange, valueRange = range)
     }
 }

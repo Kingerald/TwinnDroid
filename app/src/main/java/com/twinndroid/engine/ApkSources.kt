@@ -21,7 +21,10 @@ class SourceApks(
     val requestedPermissions: List<String>,
     val minSdk: Int = 0,
     val targetSdk: Int = 0,
-)
+) {
+    /** Anti-tamper / shielding detected in the APK set (computed lazily; see [TamperScan]). */
+    val tamper: TamperReport by lazy { TamperScan.scan(files) }
+}
 
 object ApkSources {
 

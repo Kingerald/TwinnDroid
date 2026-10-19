@@ -57,10 +57,16 @@ fun Palette.toColorScheme(): ColorScheme {
     val p = Color(primary)
     val s = Color(secondary)
     val t = Color(tertiary)
-    val bg = Color(background)
-    val surf = Color(surface)
-    val dark = bg.luminance() < 0.5f
-    val onBg = if (dark) Color(0xFFE7E1F3) else Color(0xFF1C1B1F)
+    val rawBg = Color(background)
+    val rawSurf = Color(surface)
+    val dark = rawBg.luminance() < 0.5f
+
+    // Light mode: the preset backgrounds are near-white, which glares and lets nothing behind
+    // the glass show. Dim the page to a soft toned grey (keeping a hint of the preset's colour)
+    // and keep cards lighter than it, so they lift off the page instead of blending in.
+    val bg = if (dark) rawBg else lerp(rawBg, Color(0xFFE4E2EC), 0.7f)
+    val surf = if (dark) rawSurf else lerp(bg, Color.White, 0.68f)
+    val onBg = if (dark) Color(0xFFE7E1F3) else Color(0xFF1A1A24)
     val base = if (dark) darkColorScheme() else lightColorScheme()
     val primaryContainer = lerp(p, bg, 0.55f)
     val secondaryContainer = lerp(s, bg, 0.6f)
@@ -82,18 +88,18 @@ fun Palette.toColorScheme(): ColorScheme {
         onBackground = onBg,
         surface = bg,
         onSurface = onBg,
-        surfaceVariant = lerp(surf, onBg, 0.08f),
-        onSurfaceVariant = lerp(onBg, bg, 0.25f),
-        surfaceContainerLowest = lerp(bg, Color.Black, if (dark) 0.3f else 0f),
-        surfaceContainerLow = lerp(bg, surf, 0.5f),
+        surfaceVariant = if (dark) lerp(surf, onBg, 0.08f) else lerp(bg, onBg, 0.06f),
+        onSurfaceVariant = if (dark) lerp(onBg, bg, 0.25f) else lerp(onBg, bg, 0.3f),
+        surfaceContainerLowest = if (dark) lerp(bg, Color.Black, 0.3f) else lerp(bg, Color.Black, 0.05f),
+        surfaceContainerLow = if (dark) lerp(bg, surf, 0.5f) else lerp(bg, Color.White, 0.4f),
         surfaceContainer = surf,
-        surfaceContainerHigh = lerp(surf, onBg, 0.05f),
-        surfaceContainerHighest = lerp(surf, onBg, 0.1f),
+        surfaceContainerHigh = if (dark) lerp(surf, onBg, 0.05f) else lerp(surf, Color.White, 0.55f),
+        surfaceContainerHighest = if (dark) lerp(surf, onBg, 0.1f) else Color.White,
         surfaceTint = p,
         inverseSurface = onBg,
         inverseOnSurface = bg,
-        outline = lerp(onBg, bg, 0.45f),
-        outlineVariant = lerp(onBg, bg, 0.75f),
+        outline = if (dark) lerp(onBg, bg, 0.45f) else lerp(onBg, bg, 0.55f),
+        outlineVariant = if (dark) lerp(onBg, bg, 0.75f) else lerp(onBg, bg, 0.68f),
     )
 }
 

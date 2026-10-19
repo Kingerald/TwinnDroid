@@ -25,6 +25,8 @@ import com.twinndroid.engine.ApkSources
 import com.twinndroid.engine.ExportFormat
 import com.twinndroid.engine.IconFactory
 import com.twinndroid.engine.SourceApks
+import com.twinndroid.engine.TamperReport
+import com.twinndroid.engine.TamperRisk
 import com.twinndroid.install.InstallResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,7 +34,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
 
-enum class Screen { Home, Editor, Settings, Appearance, Background, Header }
+enum class Screen { Home, Editor, IconEditor, Settings, Appearance, Background, Header }
 
 data class AppEntry(val packageName: String, val label: String, val icon: ImageBitmap?, val isSystem: Boolean)
 
@@ -50,6 +52,7 @@ data class EditorState(
     val sourceVersion: String?,
     val permissions: List<String>,
     val preview: ImageBitmap?,
+    val tamper: TamperReport = TamperReport(TamperRisk.NONE, null, ""),
     val packageError: String? = null,
 )
 
@@ -143,7 +146,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ---- editor -----------------------------------------------------------------------------
 
     fun newFromInstalled(packageName: String) = launchBusy {
-        val source = withContext(Dispatchers.IO) { ApkSources.installed(ctx, packageName) }
+        val source = withContext(Dispatchers.IO) { ApkSources.installed(ctx, packageName).also { it.tamper } }
         openEditor(newConfig(UUID.randomUUID().toString(), SourceKind.INSTALLED, source), source, isNew = true)
     }
 
@@ -153,7 +156,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val dir = ApkSources.sourceDir(ctx, id)
             try {
                 ApkSources.import(ctx, uri, dir)
-                ApkSources.stored(ctx, dir)
+                ApkSources.stored(ctx, dir).also { it.tamper }
             } catch (t: Throwable) {
                 dir.deleteRecursively()
                 throw t
@@ -163,7 +166,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun edit(config: CloneConfig) = launchBusy {
-        val source = withContext(Dispatchers.IO) { CloneOperations.resolveSource(ctx, config) }
+        val source = withContext(Dispatchers.IO) { CloneOperations.resolveSource(ctx, config).also { it.tamper } }
         openEditor(config, source, isNew = false)
     }
 
@@ -193,6 +196,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             sourceVersion = source.versionName,
             permissions = source.requestedPermissions.distinct().sorted(),
             preview = preview(config, source.icon),
+            tamper = source.tamper,
         )
         screen = Screen.Editor
     }

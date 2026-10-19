@@ -59,6 +59,7 @@ fun TwinnRoot(vm: MainViewModel) {
     BackHandler(enabled = vm.screen != Screen.Home && vm.build == null) {
         when (vm.screen) {
             Screen.Editor -> vm.closeEditor()
+            Screen.IconEditor -> vm.screen = Screen.Editor
             Screen.Background, Screen.Header -> vm.screen = Screen.Appearance
             else -> vm.screen = Screen.Home
         }
@@ -103,6 +104,7 @@ private fun RootContent(vm: MainViewModel, backdrop: Backdrop) {
             when (screen) {
                 Screen.Home -> MainTabs(vm)
                 Screen.Editor -> EditorScreen(vm)
+                Screen.IconEditor -> IconEditorScreen(vm)
                 Screen.Settings -> SettingsScreen(vm)
                 Screen.Appearance -> AppearanceScreen(vm)
                 Screen.Background -> BackgroundScreen(vm)
