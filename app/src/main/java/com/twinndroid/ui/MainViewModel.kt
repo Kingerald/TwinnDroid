@@ -25,6 +25,8 @@ import com.twinndroid.engine.ApkSources
 import com.twinndroid.engine.ExportFormat
 import com.twinndroid.engine.IconFactory
 import com.twinndroid.engine.SourceApks
+import com.twinndroid.install.ShizukuInstaller
+import com.twinndroid.install.SpecialAccess
 import com.twinndroid.engine.TamperReport
 import com.twinndroid.engine.TamperRisk
 import com.twinndroid.install.InstallResult
@@ -43,7 +45,11 @@ data class CloneItem(
     val icon: ImageBitmap?,
     val installedVersion: Long?,
     val updateAvailable: Boolean,
-)
+    /** Special accesses the installed clone asks for, and whether each is granted. */
+    val access: List<Pair<SpecialAccess, Boolean>> = emptyList(),
+) {
+    val missingAccess: List<SpecialAccess> get() = access.filterNot { it.second }.map { it.first }
+}
 
 data class EditorState(
     val config: CloneConfig,
@@ -115,7 +121,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     if (installed != null) ctx.packageManager.getApplicationIcon(c.clonePackage)
                     else ctx.packageManager.getApplicationIcon(c.sourcePackage)
                 }.getOrNull()
-                CloneItem(c, icon?.toBitmap(128, 128)?.asImageBitmap(), installed, c.id in outdated)
+                val access = if (installed != null) SpecialAccess.forPackage(ctx, c.clonePackage) else emptyList()
+                CloneItem(c, icon?.toBitmap(128, 128)?.asImageBitmap(), installed, c.id in outdated, access)
             }
         }
     }
@@ -292,6 +299,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var lastPreview: Pair<String, ImageBitmap?>? = null
     private fun editorPreviewFor(config: CloneConfig): ImageBitmap? = lastPreview?.takeIf { it.first == config.id }?.second
+
+    /** Grants a special access to a clone through Shizuku, then refreshes the list. */
+    fun grantAccess(item: CloneItem, access: SpecialAccess) = launchBusy {
+        val ok = ShizukuInstaller.allowAppOp(ctx, item.config.clonePackage, access.op)
+        if (!ok) message = "Couldn't grant ${access.label}. Open its settings page and allow it there."
+        refreshClones()
+    }
 
     fun dismissBuild() {
         build = null

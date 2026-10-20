@@ -8,6 +8,7 @@ import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.AdminPanelSettings
 import androidx.compose.material.icons.rounded.Build
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -68,6 +70,7 @@ import com.twinndroid.ui.theme.LocalTwinnExtras
 fun ClonesPage(vm: MainViewModel, onNewClone: () -> Unit) {
     val context = LocalContext.current
     var confirmDelete by remember { mutableStateOf<CloneItem?>(null) }
+    var accessFor by remember { mutableStateOf<String?>(null) }
     val canInstall = context.packageManager.canRequestPackageInstalls() ||
         (vm.settings.useShizuku && ShizukuInstaller.hasPermission())
 
@@ -114,8 +117,13 @@ fun ClonesPage(vm: MainViewModel, onNewClone: () -> Unit) {
                     context.startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${item.config.clonePackage}")))
                 },
                 onDelete = { confirmDelete = item },
+                onAccess = { accessFor = item.config.id },
             )
         }
+    }
+
+    accessFor?.let { id ->
+        vm.clones.firstOrNull { it.config.id == id }?.let { item -> SpecialAccessSheet(vm, item) { accessFor = null } }
     }
 
     confirmDelete?.let { item ->
@@ -183,6 +191,7 @@ private fun CloneCard(
     onEdit: () -> Unit,
     onUninstall: () -> Unit,
     onDelete: () -> Unit,
+    onAccess: () -> Unit,
 ) {
     val c = item.config
     var menu by remember { mutableStateOf(false) }
@@ -206,6 +215,15 @@ private fun CloneCard(
                     )
                     Spacer(Modifier.height(6.dp))
                     StatusChip(item)
+                    if (item.missingAccess.isNotEmpty()) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "Needs ${item.missingAccess.joinToString { it.label.lowercase() }} · tap to grant",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAccess).padding(vertical = 2.dp),
+                        )
+                    }
                 }
                 Box {
                     IconButton(onClick = { menu = true }) { Icon(Icons.Rounded.MoreVert, "More") }
@@ -214,6 +232,9 @@ private fun CloneCard(
                         DropdownMenuItem(text = { Text("Rebuild & reinstall") }, leadingIcon = { Icon(Icons.Rounded.Build, null) }, onClick = { menu = false; onBuild() })
                         if (item.installedVersion != null) {
                             DropdownMenuItem(text = { Text("Uninstall clone") }, leadingIcon = { Icon(Icons.Rounded.Delete, null) }, onClick = { menu = false; onUninstall() })
+                        }
+                        if (item.access.isNotEmpty()) {
+                            DropdownMenuItem(text = { Text("Special access") }, leadingIcon = { Icon(Icons.Rounded.AdminPanelSettings, null) }, onClick = { menu = false; onAccess() })
                         }
                         DropdownMenuItem(text = { Text("Remove from list") }, onClick = { menu = false; onDelete() })
                     }

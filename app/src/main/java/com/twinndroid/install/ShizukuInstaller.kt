@@ -42,6 +42,12 @@ object ShizukuInstaller {
         }
     }
 
+    /** Grants one special-access app-op (see ShellService's allowlist) to [packageName]. */
+    suspend fun allowAppOp(context: Context, packageName: String, op: String): Boolean = withContext(Dispatchers.IO) {
+        val svc = service?.takeIf { it.asBinder().pingBinder() } ?: bind(context)
+        svc.allowAppOp(packageName, op).startsWith("Success")
+    }
+
     private suspend fun bind(context: Context): IShellService = withTimeout(15_000) {
         suspendCancellableCoroutine { cont ->
             val args = Shizuku.UserServiceArgs(ComponentName(context.packageName, ShellService::class.java.name))
